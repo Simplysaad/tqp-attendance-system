@@ -12,6 +12,7 @@ export interface ISchedule {
     startTime: number; // Minutes from midnight (0–1439)
     endTime: number;   // Minutes from midnight (0–1439)
     mode: ScheduleMode;
+    pseudoLink: string;
     googleMeetLink?: string;
     googleCalendarId?: string;
     googleEventId?: string;
@@ -64,6 +65,11 @@ const scheduleSchema = new Schema<IScheduleDocument, IScheduleModel>(
             type: String,
             enum: ["online", "physical"],
             default: "online",
+        },
+        pseudoLink: {
+            type: String,
+            trim: true,
+            default: ""
         },
         googleMeetLink: { type: String, trim: true },
         googleCalendarId: { type: String, trim: true },

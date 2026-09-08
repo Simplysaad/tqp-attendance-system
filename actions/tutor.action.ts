@@ -3,8 +3,11 @@
 import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
 import connectDB from "@/lib/db";
-import Tutor, { timeToMinutes, DayOfWeek } from "@/models/tutor.model";
+import Tutor, { timeToMinutes } from "@/models/tutor.model";
+import Schedule, { DayOfWeek, ScheduleMode } from "@/models/schedule.model";
 import { getSession } from "./user.action";
+
+
 
 export interface AvailabilityInput {
     dayOfWeek: DayOfWeek;
@@ -18,6 +21,18 @@ export interface CompleteTutorOnboardingInput {
     maximumStudents?: number;
     availability: AvailabilityInput[];
 }
+
+
+interface CreateScheduleInput {
+    tutorId?: string; // Optional if coordinator creates it for a tutor
+    dayOfWeek: DayOfWeek;
+    startTime: number; // Minutes from midnight (e.g., 600 = 10:00 AM)
+    endTime: number;   // Minutes from midnight (e.g., 660 = 11:00 AM)
+    mode: ScheduleMode;
+    googleMeetLink?: string;
+    maxCapacity?: number;
+}
+
 
 export async function completeTutorOnboarding(data: CompleteTutorOnboardingInput) {
     try {
@@ -64,4 +79,62 @@ export async function completeTutorOnboarding(data: CompleteTutorOnboardingInput
     } catch (error: any) {
         return { success: false, message: error.message || "Failed to create tutor profile." };
     }
+}
+
+
+export async function createSchedule(data: CreateScheduleInput) {
+    const session = await getSession();
+
+    if (!session) {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    await connectDB();
+
+    // Identify the target tutor
+    let targetTutorId = data.tutorId;
+
+    if (session.role === "tutor") {
+        const tutor = await Tutor.findOne({ user: session.id });
+        if (!tutor) return { success: false, error: "Tutor profile not found" };
+        targetTutorId = tutor._id.toString();
+    }
+
+    if (!targetTutorId) {
+        return { success: false, error: "Tutor ID is required" };
+    }
+
+    // 1. Prevent Overlapping Slots for the Same Tutor on the Same Day
+    const existingOverlap = await Schedule.findOne({
+        tutor: targetTutorId,
+        dayOfWeek: data.dayOfWeek,
+        status: "active",
+        $or: [
+            { startTime: { $lt: data.endTime, $gte: data.startTime } },
+            { endTime: { $gt: data.startTime, $lte: data.endTime } },
+            { startTime: { $lte: data.startTime }, endTime: { $gte: data.endTime } },
+        ],
+    });
+
+    if (existingOverlap) {
+        return {
+            success: false,
+            error: `You already have an active schedule overlapping with this time on ${data.dayOfWeek}.`,
+        };
+    }
+
+    // 2. Create and Save Schedule
+    const newSchedule = await Schedule.create({
+        tutor: targetTutorId,
+        dayOfWeek: data.dayOfWeek,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        mode: data.mode || "online",
+        googleMeetLink: data.googleMeetLink,
+        maxCapacity: data.maxCapacity || 1,
+        status: "active",
+    });
+
+    revalidatePath("/dashboard");
+    return { success: true, schedule: JSON.parse(JSON.stringify(newSchedule)) };
 }

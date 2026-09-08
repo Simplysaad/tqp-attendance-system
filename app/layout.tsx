@@ -1,9 +1,14 @@
 import React, { ReactNode } from 'react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
     title: 'TQP Attendance Tracking System',
-    viewport: 'width=device-width, initial-scale=1.0',
+};
+
+export const viewport: Viewport = {
+    width: "device-width",
+    initialScale: 1,
+    themeColor: "#2e7d32",
 };
 
 interface RootLayoutProps {

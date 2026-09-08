@@ -45,16 +45,16 @@ PROGRESS:
 * [x] **User Management (Basic Operations)**
 * Authored and verified basic action functions/CRUD operations for the user collection.
 
-
-
-
-### 1. Authentication & Onboarding Flow
-
 * [x] Implement multi-role authentication (Student, Tutor, Coordinator).
 * [x] Build role-specific registration and profile completion forms:
 * **Student:** Current memorisation level, semester goal, availability, preferred class frequency.
 * **Tutor:** Capacity, availability, gender preferences, expertise level.
 
+
+
+
+
+### 1. Authentication & Onboarding Flow
 
 * [ ] Implement role-based access control (RBAC) across API routes and client views.
 
