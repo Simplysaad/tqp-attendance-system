@@ -146,6 +146,8 @@ const tutorSchema = new Schema<ITutorDocument, ITutorModel>(
     }
 );
 
-const Tutor = model<ITutorDocument, ITutorModel>("Tutor", tutorSchema);
+const Tutor =
+    (mongoose.models.Tutor as ITutorModel) ||
+    model<ITutorDocument, ITutorModel>("Tutor", tutorSchema);
 
 export default Tutor;

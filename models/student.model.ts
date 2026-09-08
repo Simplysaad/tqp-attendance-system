@@ -14,7 +14,7 @@ export interface ICurrentMemorization {
 
 // Base Student Interface
 export interface IStudent {
-    user: Types.ObjectId; // Replace with IUser interface if populated
+    user: Types.ObjectId;
     matricNumber?: string;
     gender: Gender;
     faculty?: string;
@@ -87,6 +87,8 @@ const studentSchema = new Schema<IStudentDocument, IStudentModel>(
     }
 );
 
-const Student = model<IStudentDocument, IStudentModel>("Student", studentSchema);
+const Student =
+    (mongoose.models.Student as IStudentModel) ||
+    model<IStudentDocument, IStudentModel>("Student", studentSchema);
 
 export default Student;

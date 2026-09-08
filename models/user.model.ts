@@ -7,6 +7,7 @@ export type UserRole = "student" | "tutor" | "admin";
 export interface IUser {
     name: string;
     email: string;
+    whatsappNumber: string;
     password?: string;
     role: UserRole;
     isActive: boolean;
@@ -34,6 +35,10 @@ const userSchema = new Schema<IUserDocument, IUserModel, IUserMethods>(
             trim: true,
             minlength: [2, "Name must be at least 2 characters"],
             maxlength: [50, "Name cannot exceed 50 characters"],
+        },
+        whatsappNumber: {
+            type: String,
+            required: true,
         },
         email: {
             type: String,
@@ -83,6 +88,8 @@ const userSchema = new Schema<IUserDocument, IUserModel, IUserMethods>(
 );
 
 
-const User = model<IUserDocument, IUserModel>("User", userSchema);
+const User =
+    (mongoose.models.User as IUserModel) ||
+    model<IUserDocument, IUserModel>("User", userSchema);
 
 export default User;

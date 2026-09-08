@@ -66,5 +66,8 @@ const goalSchema = new Schema<IGoalDocument, IGoalModel>(
 
 goalSchema.index({ student: 1, semester: 1 });
 
-const Goal = model<IGoalDocument, IGoalModel>("Goal", goalSchema);
+const Goal =
+    (mongoose.models.Goal as IGoalModel) ||
+    model<IGoalDocument, IGoalModel>("Goal", goalSchema);
+
 export default Goal;

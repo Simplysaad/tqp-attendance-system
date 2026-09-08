@@ -138,6 +138,8 @@ sessionSchema.pre("validate", function () {
     }
 });
 
-const Session = model<ISessionDocument, ISessionModel>("Session", sessionSchema);
+const Session =
+    (mongoose.models.Session as ISessionModel) ||
+    model<ISessionDocument, ISessionModel>("Session", sessionSchema);
 
 export default Session;

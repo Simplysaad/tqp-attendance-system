@@ -88,5 +88,8 @@ scheduleSchema.pre("validate", function () {
     }
 });
 
-const Schedule = model<IScheduleDocument, IScheduleModel>("Schedule", scheduleSchema);
+const Schedule =
+    (mongoose.models.Schedule as IScheduleModel) ||
+    model<IScheduleDocument, IScheduleModel>("Schedule", scheduleSchema);
+
 export default Schedule;
