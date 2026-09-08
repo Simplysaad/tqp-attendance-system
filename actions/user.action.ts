@@ -5,9 +5,7 @@ import connectDB from '@/lib/db';
 import User, { IUser } from '@/models/user.model';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
-import { redirect } from "next/navigation";
 
-// Existing Registration Action
 
 const SESSION_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -89,7 +87,7 @@ export async function loginUser(email: string, password: string) {
 
         // Persist session cookie on successful login
         await setUserSessionCookie(sanitizedUser);
-        // console.log("loggedIn user", sanitizedUser)
+        console.log("loggedIn user", sanitizedUser)
 
         return { success: true, user: sanitizedUser };
     } catch (error: any) {
