@@ -3,6 +3,7 @@
 import { useState, FormEvent } from "react";
 import { createSchedule } from "@/actions/tutor.action";
 import { timeStringToMinutes } from "@/lib/time";
+import { redirect } from "next/navigation";
 
 export default function CreateScheduleForm() {
     const [dayOfWeek, setDayOfWeek] = useState("monday");
@@ -36,6 +37,7 @@ export default function CreateScheduleForm() {
 
         if (res.success) {
             alert("Schedule created successfully!");
+            redirect("/dashboard");
         } else {
             alert(res.error || "Failed to create schedule.");
         }
@@ -101,6 +103,9 @@ export default function CreateScheduleForm() {
             <button
                 type="submit"
                 disabled={loading}
+                onClick={() => {
+
+                }}
                 className="w-full bg-emerald-600 text-white py-2 rounded font-medium hover:bg-emerald-700"
             >
                 {loading ? "Creating..." : "Save Schedule Slot"}
