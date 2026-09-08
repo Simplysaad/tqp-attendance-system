@@ -94,7 +94,7 @@ const availabilitySchema = new Schema<IAvailability>(
 );
 
 // Custom Validator: Ensure startTime is strictly before endTime
-availabilitySchema.pre("validate", function (next) {
+availabilitySchema.pre("validate", function () {
     if (
         this.startTime !== undefined &&
         this.endTime !== undefined &&
@@ -105,7 +105,6 @@ availabilitySchema.pre("validate", function (next) {
             `End time (${minutesToTime(this.endTime)}) must be strictly after start time (${minutesToTime(this.startTime)})`
         );
     }
-    next();
 });
 
 // Main Tutor Schema
