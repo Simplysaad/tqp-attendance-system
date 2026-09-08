@@ -2,6 +2,8 @@ import connectDB from "@/lib/db";
 import Tutor, { minutesToTime } from "@/models/tutor.model";
 import Schedule, { IScheduleDocument } from "@/models/schedule.model";
 import Link from "next/link";
+import ActivateNearestScheduleButton from "@/components/ActivateLinkButton";
+import TutorStudentsList from "@/components/TutorStudentsList";
 
 interface TutorDashboardProps {
     userId: string;
@@ -39,6 +41,24 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
                 <div className="text-right">
                     <span className="text-xs text-gray-500 block">Student Capacity</span>
                     <span className="font-bold text-lg text-emerald-600">{tutor.maximumStudents} Max</span>
+                </div>
+            </div>
+            {/* Quick Action: Start/Activate Session */}
+            <div className="p-5 border rounded-lg bg-emerald-50 border-emerald-200 flex justify-between items-center">
+                <div>
+                    <h3 className="font-semibold text-emerald-900">Start Today's Session</h3>
+                    <p className="text-sm text-emerald-700">
+                        Activate your pseudo link to allow assigned students to join class today.
+                    </p>
+                </div>
+                <div className="flex gap-2">
+                    <ActivateNearestScheduleButton />
+                    <Link
+                        href="/schedule/create"
+                        className="px-4 py-2 bg-white text-emerald-700 border border-emerald-300 rounded-md text-sm font-medium hover:bg-emerald-100 transition"
+                    >
+                        Create Schedule
+                    </Link>
                 </div>
             </div>
 
@@ -128,26 +148,9 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
                 )}
             </div>
 
-            {/* Quick Action: Start/Activate Session */}
-            <div className="p-5 border rounded-lg bg-emerald-50 border-emerald-200 flex justify-between items-center">
-                <div>
-                    <h3 className="font-semibold text-emerald-900">Start Today's Session</h3>
-                    <p className="text-sm text-emerald-700">
-                        Activate your pseudo link to allow assigned students to join class today.
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <button className="px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 transition">
-                        Activate Link
-                    </button>
-                    <Link
-                        href="/schedule/create"
-                        className="px-4 py-2 bg-white text-emerald-700 border border-emerald-300 rounded-md text-sm font-medium hover:bg-emerald-100 transition"
-                    >
-                        Create Schedule
-                    </Link>
-                </div>
-            </div>
+
+
+            <TutorStudentsList userId={userId} />
         </div>
     );
 }

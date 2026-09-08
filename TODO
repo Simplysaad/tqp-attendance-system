@@ -45,30 +45,20 @@ PROGRESS:
 * [x] **User Management (Basic Operations)**
 * Authored and verified basic action functions/CRUD operations for the user collection.
 
+### 1. Authentication & Onboarding Flow - done
 * [x] Implement multi-role authentication (Student, Tutor, Coordinator).
 * [x] Build role-specific registration and profile completion forms:
 * **Student:** Current memorisation level, semester goal, availability, preferred class frequency.
 * **Tutor:** Capacity, availability, gender preferences, expertise level.
-
-
-
-
-
-### 1. Authentication & Onboarding Flow
-
 * [ ] Implement role-based access control (RBAC) across API routes and client views.
 
 ### 2. Pseudo-Link & Google Meet Integration
 
-* [ ] Build the **Pseudo Link Service**:
-* Dynamically generate unique pseudo links for scheduled classes.
-* State logic: Disabled until Tutor clicks $\rightarrow$ Active for Student $\rightarrow$ Inactive after session ends.
-
-
+* [x] Build the **Pseudo Link Service**:
+* [x] Dynamically generate unique pseudo links for scheduled classes.
+* [x] State logic: Disabled until Tutor clicks $\rightarrow$ Active for Student $\rightarrow$ Inactive after session ends.
 * [ ] Integrate **Google Meet & Calendar API**:
 * Fetch join/leave events via Google Meet API to log real-time attendance and duration metrics.
-
-
 * [ ] Trigger post-meeting workflow: Auto-deactivate pseudo link upon class completion.
 
 ### 3. Session & Attendance Logging Framework
@@ -76,7 +66,6 @@ PROGRESS:
 * [ ] Build post-class transactional actions for dual verification:
 * **Student Input:** Quick progress submission (pages memorized/revised).
 * **Tutor Input:** Attendance confirmation, progress verification, quality score, and session notes.
-
 
 * [ ] Build automated post-class email triggers prompting both Student and Tutor to log session feedback.
 

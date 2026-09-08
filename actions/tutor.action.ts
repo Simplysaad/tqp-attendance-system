@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
 import connectDB from "@/lib/db";
 import Tutor, { timeToMinutes } from "@/models/tutor.model";
-import Schedule, { DayOfWeek, ScheduleMode } from "@/models/schedule.model";
+import Schedule, { DayOfWeek, ScheduleMode, IScheduleDocument } from "@/models/schedule.model";
+import Session from "@/models/session.model";
 import { getSession } from "./user.action";
 
 
@@ -137,4 +138,133 @@ export async function createSchedule(data: CreateScheduleInput) {
 
     revalidatePath("/dashboard");
     return { success: true, schedule: JSON.parse(JSON.stringify(newSchedule)) };
+}
+
+
+const DAYS_ORDER: DayOfWeek[] = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+];
+
+export async function activateNearestSchedule() {
+    const authSession = await getSession();
+
+    if (!authSession || authSession.role !== "tutor") {
+        return { success: false, error: "Unauthorized access" };
+    }
+
+    await connectDB();
+
+    // 1. Fetch Tutor Profile
+    const tutor = await Tutor.findOne({ user: authSession.id });
+    if (!tutor) {
+        return { success: false, error: "Tutor profile not found" };
+    }
+
+    // 2. Fetch all active schedules for this tutor
+    const schedules = await Schedule.find({
+        tutor: tutor._id,
+        status: "active",
+    }).lean<IScheduleDocument[]>();
+
+    if (!schedules || schedules.length === 0) {
+        return { success: false, error: "No active class schedules found." };
+    }
+
+    // 3. Determine current time context
+    const now = new Date();
+    const currentDayIndex = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // 4. Find the nearest schedule (Currently running OR next in future)
+    let nearestSchedule: IScheduleDocument | null = null;
+    let smallestDiff = Infinity;
+
+    for (const schedule of schedules) {
+        const scheduleDayIndex = DAYS_ORDER.indexOf(
+            schedule.dayOfWeek.toLowerCase() as DayOfWeek
+        );
+        if (scheduleDayIndex === -1) continue;
+
+        // Calculate days away from today (0 to 6)
+        let dayDiff = (scheduleDayIndex - currentDayIndex + 7) % 7;
+
+        // If it's today, check if it already ended
+        if (dayDiff === 0 && schedule.endTime < currentMinutes) {
+            // Slot passed earlier today, push target to next week (7 days away)
+            dayDiff = 7;
+        }
+
+        // Convert total time difference to total minutes from now
+        let timeDiffInMinutes: number;
+        if (dayDiff === 0) {
+            // Happening today (either currently running or later today)
+            timeDiffInMinutes = Math.max(0, schedule.startTime - currentMinutes);
+        } else {
+            // Happening on a future day
+            timeDiffInMinutes = dayDiff * 1440 + (schedule.startTime - currentMinutes);
+        }
+
+        if (timeDiffInMinutes < smallestDiff) {
+            smallestDiff = timeDiffInMinutes;
+            nearestSchedule = schedule;
+        }
+    }
+
+    if (!nearestSchedule) {
+        return { success: false, error: "Could not find a valid upcoming schedule." };
+    }
+
+    // 5. Define normalized "today" start date (00:00:00)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 6. Check existing session for today
+    const existingSessions = await Session.find({
+        schedule: nearestSchedule._id,
+        date: today,
+    });
+
+    const nextActiveState =
+        existingSessions.length > 0 ? !existingSessions[0].isLinkActive : true;
+
+    if (existingSessions.length > 0) {
+        await Session.updateMany(
+            { schedule: nearestSchedule._id, date: today },
+            { $set: { isLinkActive: nextActiveState } }
+        );
+    } else if (nearestSchedule.students && nearestSchedule.students.length > 0) {
+        const sessionDocs = nearestSchedule.students.map((studentId: any) => ({
+            schedule: nearestSchedule!._id,
+            student: studentId,
+            tutor: tutor._id,
+            date: today,
+            startTime: nearestSchedule!.startTime,
+            endTime: nearestSchedule!.endTime,
+            attendance: "absent",
+            isLinkActive: true,
+        }));
+
+        await Session.insertMany(sessionDocs);
+    } else {
+        return {
+            success: false,
+            error: `Nearest schedule (${nearestSchedule.dayOfWeek}) has no assigned students yet.`,
+        };
+    }
+
+    revalidatePath("/dashboard");
+    return {
+        success: true,
+        isActive: nextActiveState,
+        scheduleDay: nearestSchedule.dayOfWeek,
+        message: nextActiveState
+            ? `Activated nearest schedule (${nearestSchedule.dayOfWeek})`
+            : `Deactivated schedule (${nearestSchedule.dayOfWeek})`,
+    };
 }

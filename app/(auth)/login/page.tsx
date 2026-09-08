@@ -32,7 +32,6 @@ const LoginPage = () => {
             const response = await loginUser(formData.email, formData.password);
             console.log("login response", response)
 
-            router.push("/dashboard")
 
             if (response.success) {
                 // FIXED: Updated success messages to reflect login
@@ -43,6 +42,7 @@ const LoginPage = () => {
                     email: '',
                     password: '',
                 });
+                router.push("/dashboard")
             } else {
                 console.error('Error logging in user:', response.error);
                 alert(response.error || 'Login failed. Please try again.');

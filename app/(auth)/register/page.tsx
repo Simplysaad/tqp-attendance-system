@@ -52,7 +52,7 @@ const RegisterPage = () => {
                     password: '',
                 });
 
-                router.push(`/onboarding/${formData?.role}`)
+                router.push("/onboarding")
             } else {
                 console.error('Error registering user:', response.error);
                 alert(response.error || 'Registration failed. Please try again.');

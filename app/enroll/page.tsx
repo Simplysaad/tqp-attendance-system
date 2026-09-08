@@ -1,0 +1,124 @@
+import connectDB from "@/lib/db";
+import Schedule from "@/models/schedule.model";
+import Student from "@/models/student.model";
+import Tutor from "@/models/tutor.model";
+import { getSession } from "@/actions/user.action";
+import EnrollTutorButton from "@/components/EnrollButton";
+
+function minutesToTime(minutes: number): string {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+}
+
+export default async function EnrollPage() {
+    await connectDB();
+    const authSession = await getSession();
+
+    let currentStudentId: string | null = null;
+    if (authSession && authSession.role === "student") {
+        const student = await Student.findOne({ user: authSession.id }).lean();
+        if (student) currentStudentId = student._id.toString();
+    }
+
+    // Fetch all tutors along with their active schedules
+    const tutors = await Tutor.find().populate("user", "name email").lean();
+    const allSchedules = await Schedule.find({ status: "active" }).lean();
+
+    return (
+        <div className="max-w-5xl mx-auto p-6 space-y-8">
+            <div>
+                <h1 className="text-3xl font-bold text-gray-900">Choose a Tutor</h1>
+                <p className="text-gray-600 text-sm mt-1">
+                    Select a tutor to commit to all of their weekly class schedules. Tutors take a maximum of 5 students.
+                </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {tutors.map((tutor: any) => {
+                    // Get all schedules belonging to this tutor
+                    const tutorSchedules = allSchedules.filter(
+                        (s) => s.tutor.toString() === tutor._id.toString()
+                    );
+
+                    // Get unique enrolled students across all of this tutor's schedules
+                    const uniqueStudentIds = new Set<string>();
+                    tutorSchedules.forEach((s) => {
+                        s.students?.forEach((stId: any) => uniqueStudentIds.add(stId.toString()));
+                    });
+
+                    const totalEnrolled = uniqueStudentIds.size;
+                    const maxCapacity = tutor.maximumStudents || 5;
+                    const isFilled = totalEnrolled >= maxCapacity;
+                    const isAlreadyEnrolled = currentStudentId && uniqueStudentIds.has(currentStudentId);
+
+                    return (
+                        <div
+                            key={tutor._id.toString()}
+                            className="border rounded-xl p-6 bg-white shadow-sm flex flex-col justify-between space-y-5 hover:border-emerald-300 transition"
+                        >
+                            {/* Tutor Header */}
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-start border-b pb-3">
+                                    <div>
+                                        <h2 className="font-bold text-lg text-gray-900">
+                                            {tutor.user?.name
+                                                ? `${tutor.gender === "female" ? "Ustadhah" : "Ustadh"} ${tutor.user.name.split(" ")[1] || tutor.user.name}`
+                                                : "Qur'an Tutor"}
+                                        </h2>
+                                        <p className="text-xs text-gray-500">
+                                            {tutor.bio}
+                                        </p>
+                                    </div>
+                                    <span
+                                        className={`text-xs px-2.5 py-1 rounded-full font-bold ${isFilled
+                                            ? "bg-red-100 text-red-700"
+                                            : "bg-emerald-100 text-emerald-800"
+                                            }`}
+                                    >
+                                        {totalEnrolled} / {maxCapacity} Enrolled
+                                    </span>
+                                </div>
+
+                                {/* Tutor's Schedule List */}
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                        Weekly Class Timetable
+                                    </h4>
+                                    {tutorSchedules.length > 0 ? (
+                                        <div className="space-y-1.5">
+                                            {tutorSchedules.map((slot: any) => (
+                                                <div
+                                                    key={slot._id.toString()}
+                                                    className="flex justify-between items-center bg-gray-50 p-2.5 rounded-lg border text-xs"
+                                                >
+                                                    <span className="font-semibold text-gray-800 capitalize">
+                                                        📅 {slot.dayOfWeek}
+                                                    </span>
+                                                    <span className="font-mono text-emerald-700 font-medium">
+                                                        🕒 {minutesToTime(slot.startTime)} - {minutesToTime(slot.endTime)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-gray-400 italic py-2">
+                                            No weekly schedules published yet.
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Enrollment Action */}
+                            <EnrollTutorButton
+                                tutorId={tutor._id.toString()}
+                                isFilled={isFilled}
+                                isAlreadyEnrolled={Boolean(isAlreadyEnrolled)}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}

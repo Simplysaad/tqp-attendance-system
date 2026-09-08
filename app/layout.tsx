@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 import type { Metadata, Viewport } from 'next';
-import "./index.css";
+import "./globals.css";
 
 export const metadata: Metadata = {
     title: 'TQP Attendance Tracking System',
@@ -18,9 +18,9 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
     return (
-        <html lang="en">
-            <body>
-                <div>{children}</div>
+        <html lang="en" suppressHydrationWarning>
+            <body className="min-h-screen bg-gray-50 text-gray-900 antialiased" suppressHydrationWarning>
+                {children}
             </body>
         </html>
     );
