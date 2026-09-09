@@ -3,16 +3,18 @@
 interface StudentJoinClassButtonProps {
     isLinkActive: boolean;
     meetLinkAvailable: boolean;
+    link: string | undefined;
 }
 
 export default function JoinClassButton({
     isLinkActive,
     meetLinkAvailable,
+    link
 }: StudentJoinClassButtonProps) {
     if (isLinkActive && meetLinkAvailable) {
         return (
             <a
-                href="/api/join-session"
+                href={link}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-semibold shadow-sm transition flex items-center gap-2"

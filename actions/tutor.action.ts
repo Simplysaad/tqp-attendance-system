@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
 import connectDB from "@/lib/db";
 import Tutor, { timeToMinutes } from "@/models/tutor.model";
-import Schedule, { DayOfWeek, ScheduleMode, IScheduleDocument } from "@/models/schedule.model";
-import Session from "@/models/session.model";
+import Schedule, { DayOfWeek, ScheduleMode, IScheduleDocument, ISchedule } from "@/models/schedule.model";
 import { getSession } from "./user.action";
+import Student from "@/models/student.model";
 
 
 
@@ -229,37 +229,58 @@ const DAYS_ORDER: DayOfWeek[] = [
     "saturday",
 ];
 
-export async function activateNearestSchedule() {
+export async function getNearestSchedule(): Promise<
+    { success: true; data: IScheduleDocument } | { success: false; error: string }
+> {
     const authSession = await getSession();
 
-    if (!authSession || authSession.role !== "tutor") {
+    if (!authSession) {
         return { success: false, error: "Unauthorized access" };
     }
 
     await connectDB();
 
-    // 1. Fetch Tutor Profile
-    const tutor = await Tutor.findOne({ user: authSession.id });
-    if (!tutor) {
-        return { success: false, error: "Tutor profile not found" };
-    }
+    let schedules: IScheduleDocument[] = [];
 
-    // 2. Fetch all active schedules for this tutor
-    const schedules = await Schedule.find({
-        tutor: tutor._id,
-        status: "active",
-    }).lean<IScheduleDocument[]>();
+    if (authSession.role === "tutor") {
+        // 1. Fetch Tutor Profile
+        const tutor = await Tutor.findOne({ user: authSession.id }).lean();
+        if (!tutor) {
+            return { success: false, error: "Tutor profile not found" };
+        }
+
+        // 2. Fetch all schedules for this tutor with populated tutor->user details
+        schedules = await Schedule.find({ tutor: tutor._id })
+            .populate({
+                path: "tutor",
+                populate: { path: "user", select: "name email" },
+            })
+            .lean<IScheduleDocument[]>();
+    } else {
+        // 3. Fetch Student Profile first to get the Student _id
+        const student = await Student.findOne({ user: authSession.id || authSession.userId }).lean();
+        if (!student) {
+            return { success: false, error: "Student profile not found" };
+        }
+
+        // 4. Fetch schedules matching the Student _id
+        schedules = await Schedule.find({ students: student._id })
+            .populate({
+                path: "tutor",
+                populate: { path: "user", select: "name email" },
+            })
+            .lean<IScheduleDocument[]>();
+    }
 
     if (!schedules || schedules.length === 0) {
-        return { success: false, error: "No active class schedules found." };
+        return { success: false, error: "No class schedules found." };
     }
 
-    // 3. Determine current time context
+    // 5. Determine current time context
     const now = new Date();
-    const currentDayIndex = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const currentDayIndex = now.getDay();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-    // 4. Find the nearest schedule (Currently running OR next in future)
     let nearestSchedule: IScheduleDocument | null = null;
     let smallestDiff = Infinity;
 
@@ -269,22 +290,22 @@ export async function activateNearestSchedule() {
         );
         if (scheduleDayIndex === -1) continue;
 
-        // Calculate days away from today (0 to 6)
         let dayDiff = (scheduleDayIndex - currentDayIndex + 7) % 7;
 
-        // If it's today, check if it already ended
+        // If today, but the schedule has already ended, push it to next week
         if (dayDiff === 0 && schedule.endTime < currentMinutes) {
-            // Slot passed earlier today, push target to next week (7 days away)
             dayDiff = 7;
         }
 
-        // Convert total time difference to total minutes from now
         let timeDiffInMinutes: number;
         if (dayDiff === 0) {
-            // Happening today (either currently running or later today)
-            timeDiffInMinutes = Math.max(0, schedule.startTime - currentMinutes);
+            // Class is either active or starting later today
+            if (currentMinutes >= schedule.startTime && currentMinutes <= schedule.endTime) {
+                timeDiffInMinutes = 0; // Active right now -> Highest priority
+            } else {
+                timeDiffInMinutes = schedule.startTime - currentMinutes;
+            }
         } else {
-            // Happening on a future day
             timeDiffInMinutes = dayDiff * 1440 + (schedule.startTime - currentMinutes);
         }
 
@@ -298,51 +319,35 @@ export async function activateNearestSchedule() {
         return { success: false, error: "Could not find a valid upcoming schedule." };
     }
 
-    // 5. Define normalized "today" start date (00:00:00)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    return { success: true, data: JSON.parse(JSON.stringify(nearestSchedule)) };
+}
 
-    // 6. Check existing session for today
-    const existingSessions = await Session.find({
-        schedule: nearestSchedule._id,
-        date: today,
-    });
+export async function activateNearestSchedule() {
+    const result = await getNearestSchedule();
 
-    const nextActiveState =
-        existingSessions.length > 0 ? !existingSessions[0].isLinkActive : true;
-
-    if (existingSessions.length > 0) {
-        await Session.updateMany(
-            { schedule: nearestSchedule._id, date: today },
-            { $set: { isLinkActive: nextActiveState } }
-        );
-    } else if (nearestSchedule.students && nearestSchedule.students.length > 0) {
-        const sessionDocs = nearestSchedule.students.map((studentId: any) => ({
-            schedule: nearestSchedule!._id,
-            student: studentId,
-            tutor: tutor._id,
-            date: today,
-            startTime: nearestSchedule!.startTime,
-            endTime: nearestSchedule!.endTime,
-            attendance: "absent",
-            isLinkActive: true,
-        }));
-
-        await Session.insertMany(sessionDocs);
-    } else {
-        return {
-            success: false,
-            error: `Nearest schedule (${nearestSchedule.dayOfWeek}) has no assigned students yet.`,
-        };
+    if (!result.success) {
+        return { success: false, error: result.error };
     }
 
+    const nearestSchedule = result.data;
+
+    // 5. Toggle Schedule status directly in DB
+    const newStatus = nearestSchedule.status === "active" ? "inactive" : "active";
+    const updatedSchedule = await Schedule.findByIdAndUpdate(
+        nearestSchedule._id,
+        { status: newStatus },
+        { new: true } // Returns the updated document
+    );
+
     revalidatePath("/dashboard");
+
+    const isActive = newStatus === "active";
     return {
         success: true,
-        isActive: nextActiveState,
+        isActive,
         scheduleDay: nearestSchedule.dayOfWeek,
-        message: nextActiveState
-            ? `Activated nearest schedule (${nearestSchedule.dayOfWeek})`
-            : `Deactivated schedule (${nearestSchedule.dayOfWeek})`,
+        message: isActive
+            ? `Activated schedule for ${nearestSchedule.dayOfWeek}`
+            : `Deactivated schedule for ${nearestSchedule.dayOfWeek}`,
     };
 }

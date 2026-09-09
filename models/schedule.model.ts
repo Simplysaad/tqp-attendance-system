@@ -6,13 +6,13 @@ export type ScheduleStatus = "active" | "inactive";
 
 export interface ISchedule {
     tutor: Types.ObjectId;
-    students: Types.ObjectId[]; // Array of assigned students
+    students: Types.ObjectId[];
     maxCapacity?: number;
     dayOfWeek: DayOfWeek;
-    startTime: number; // Minutes from midnight (0–1439)
-    endTime: number;   // Minutes from midnight (0–1439)
+    startTime: number;
+    endTime: number;
     mode: ScheduleMode;
-    pseudoLink: string;
+    pseudoLink?: string; // Stored field
     googleMeetLink?: string;
     googleCalendarId?: string;
     googleEventId?: string;
@@ -40,7 +40,7 @@ const scheduleSchema = new Schema<IScheduleDocument, IScheduleModel>(
         ],
         maxCapacity: {
             type: Number,
-            default: 1, // Change to >1 for group classes
+            default: 1,
         },
         dayOfWeek: {
             type: String,
@@ -68,8 +68,7 @@ const scheduleSchema = new Schema<IScheduleDocument, IScheduleModel>(
         },
         pseudoLink: {
             type: String,
-            trim: true,
-            default: ""
+            trim: true
         },
         googleMeetLink: { type: String, trim: true },
         googleCalendarId: { type: String, trim: true },
@@ -81,18 +80,31 @@ const scheduleSchema = new Schema<IScheduleDocument, IScheduleModel>(
             index: true,
         },
     },
-    { timestamps: true }
+    {
+        timestamps: true,
+    }
 );
 
-// Compound index to quickly find a tutor's schedule for a specific day
+// Compound index
 scheduleSchema.index({ tutor: 1, dayOfWeek: 1 });
 
-// Ensure startTime is before endTime
-scheduleSchema.pre("validate", function () {
+// Ensure startTime is before endTime & generate pseudoLink
+scheduleSchema.pre("save", function () {
     if (this.startTime !== undefined && this.endTime !== undefined && this.startTime >= this.endTime) {
         this.invalidate("endTime", "End time must be strictly after start time");
     }
+
+    // Generate pseudoLink if missing or on new document creation
+    if (this.isNew || !this.pseudoLink) {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BASE_URL || "http://localhost:3000";
+        this.pseudoLink = `${baseUrl}/join/${this._id}`;
+    }
 });
+
+// Clear model cache in dev so Next.js reloads changes immediately
+if (process.env.NODE_ENV !== "production") {
+    delete (mongoose.models as any).Schedule;
+}
 
 const Schedule =
     (mongoose.models.Schedule as IScheduleModel) ||

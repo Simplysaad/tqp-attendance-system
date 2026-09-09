@@ -1,4 +1,6 @@
 import mongoose, { Schema, Document, Model, model, Types } from "mongoose";
+import { IStudent } from "./student.model";
+import { IUser } from "./user.model";
 
 export type AttendanceStatus = "present" | "absent" | "partial" | "cancelled";
 export type PerformanceRating = "excellent" | "good" | "fair" | "needs_work";
@@ -16,8 +18,9 @@ export interface IMemorizationRange {
 }
 
 export interface ISession {
+    name: string;
     schedule: Types.ObjectId;
-    student: Types.ObjectId;
+    student: IStudent | Types.ObjectId
     tutor: Types.ObjectId;
     date: Date;
     startTime: number; // Minutes from midnight (0-1439)
@@ -30,6 +33,7 @@ export interface ISession {
 
     // Performance & Attendance Logged by Tutor After Class
     attendance: AttendanceStatus;
+    approved: boolean;
     newMemorization?: IMemorizationRange;
     revision?: IMemorizationRange;
     performance?: PerformanceRating;
@@ -62,6 +66,7 @@ const memorizationRangeSchema = new Schema<IMemorizationRange>(
 
 const sessionSchema = new Schema<ISessionDocument, ISessionModel>(
     {
+        name: String,
         schedule: {
             type: Schema.Types.ObjectId,
             ref: "Schedule",
@@ -128,6 +133,10 @@ const sessionSchema = new Schema<ISessionDocument, ISessionModel>(
                 values: ["excellent", "good", "fair", "needs_work"],
                 message: "{VALUE} is not a valid performance rating",
             },
+        },
+        approved: {
+            type: Boolean,
+            default: false
         },
         tutorsComment: {
             type: String,

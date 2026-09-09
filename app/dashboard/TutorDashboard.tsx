@@ -5,10 +5,13 @@ import ActivateNearestScheduleButton from "@/components/ActivateLinkButton";
 import TutorStudentsList from "@/components/TutorStudentsList";
 import CreateScheduleModal from "@/components/CreateScheduleModal";
 import EditScheduleModal from "@/components/EditScheduleModal";
+import UnapprovedSessionsList from "@/components/UnapprovedSessionsList";
+import Session from "@/models/session.model";
 
 interface TutorDashboardProps {
     userId: string;
 }
+
 
 export default async function TutorDashboard({ userId }: TutorDashboardProps) {
     await connectDB();
@@ -27,7 +30,12 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
     const schedules = await Schedule.find({ tutor: tutor._id, status: "active" })
         .populate("students", "fullName email")
         .sort({ dayOfWeek: 1, startTime: 1 })
-        .lean<IScheduleDocument[]>();
+        .lean<IScheduleDocument[]>({ virtuals: true });
+
+    // console.log("schedules", schedules)
+
+    const rawSessions = await Session.find({ tutor: tutor._id }).lean()
+    const sessions = JSON.parse(JSON.stringify(rawSessions));
 
     return (
         <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -128,6 +136,19 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
                                         </a>
                                     </div>
                                 )}
+                                {item.pseudoLink && (
+                                    <div className="text-xs truncate">
+                                        <span className="text-gray-500">Pseudo Link: </span>
+                                        <a
+                                            href={item.pseudoLink}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 underline font-mono hover:text-blue-800"
+                                        >
+                                            {item.pseudoLink}
+                                        </a>
+                                    </div>
+                                )}
 
                                 <div className="pt-2 border-t text-xs text-gray-500 flex justify-between items-center">
                                     <span>
@@ -146,6 +167,7 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
             </div>
 
             <TutorStudentsList userId={userId} />
+            <UnapprovedSessionsList sessions={sessions.filter((s: { approved: boolean }) => !s.approved)} />
         </div>
     );
 }
