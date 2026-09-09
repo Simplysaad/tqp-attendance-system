@@ -66,6 +66,11 @@ const scheduleSchema = new Schema<IScheduleDocument, IScheduleModel>(
             enum: ["online", "physical"],
             default: "online",
         },
+        status: {
+            type: String,
+            enum: ["active", "inactive"],
+            default: "inactive"
+        },
         pseudoLink: {
             type: String,
             trim: true
@@ -73,15 +78,11 @@ const scheduleSchema = new Schema<IScheduleDocument, IScheduleModel>(
         googleMeetLink: { type: String, trim: true },
         googleCalendarId: { type: String, trim: true },
         googleEventId: { type: String, trim: true },
-        status: {
-            type: String,
-            enum: ["active", "inactive"],
-            default: "active",
-            index: true,
-        },
     },
     {
         timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true }
     }
 );
 
@@ -98,6 +99,43 @@ scheduleSchema.pre("save", function () {
     if (this.isNew || !this.pseudoLink) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BASE_URL || "http://localhost:3000";
         this.pseudoLink = `${baseUrl}/join/${this._id}`;
+    }
+});
+
+
+
+const DAYS_OF_WEEK: DayOfWeek[] = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+];
+
+scheduleSchema.pre(["find", "findOne", "countDocuments"], function () {
+    const query = this.getQuery();
+
+    if ("status" in query) {
+        const targetStatus = query.status;
+        delete query.status;
+
+        const now = new Date();
+        const currentDay = DAYS_OF_WEEK[now.getDay()];
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+        const activeConditions = {
+            dayOfWeek: currentDay,
+            startTime: { $lte: currentMinutes },
+            endTime: { $gte: currentMinutes },
+        };
+
+        if (targetStatus === "active") {
+            Object.assign(query, activeConditions);
+        } else if (targetStatus === "inactive") {
+            query.$nor = [activeConditions];
+        }
     }
 });
 

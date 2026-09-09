@@ -22,6 +22,7 @@ export interface IStudent {
     level?: number;
     currentMemorization?: ICurrentMemorization;
     status: StudentStatus;
+    tutor: Types.ObjectId;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -81,6 +82,12 @@ const studentSchema = new Schema<IStudentDocument, IStudentModel>(
             default: "active",
             index: true,
         },
+        tutor: {
+            type: Schema.Types.ObjectId,
+            ref: "Tutor",
+            default: null,
+            index: true,
+        }
     },
     {
         timestamps: true,

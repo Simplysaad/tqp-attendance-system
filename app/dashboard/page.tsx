@@ -1,7 +1,7 @@
 import { getSession } from "@/actions/user.action";
 import StudentDashboard from "./StudentDashboard";
 import TutorDashboard from "./TutorDashboard";
-import AdminDashboard from "./AdminDashboard";
+import AdminDashboard from "../admin/AdminDashboard";
 import Student from "@/models/student.model";
 import Tutor from "@/models/tutor.model";
 import connectDB from "@/lib/db";
@@ -16,11 +16,14 @@ const Dashboard = async () => {
 
     const { id: userId, role } = session;
 
+
     if (role === "admin" || role === "coordinator") {
-        return <AdminDashboard userId={userId} />;
+        redirect("/admin");
     }
 
     await connectDB();
+
+
 
     if (role === "student") {
         const studentProfile = await Student.findOne({ user: userId });

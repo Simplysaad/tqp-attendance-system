@@ -27,7 +27,7 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
         );
     }
 
-    const schedules = await Schedule.find({ tutor: tutor._id, status: "active" })
+    const schedules = await Schedule.find({ tutor: tutor._id })
         .populate("students", "fullName email")
         .sort({ dayOfWeek: 1, startTime: 1 })
         .lean<IScheduleDocument[]>({ virtuals: true });
