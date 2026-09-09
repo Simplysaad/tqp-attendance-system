@@ -34,6 +34,16 @@ interface CreateScheduleInput {
     maxCapacity?: number;
 }
 
+export interface UpdateScheduleInput {
+    scheduleId: string;
+    dayOfWeek: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+    startTime: number; // in minutes
+    endTime: number;   // in minutes
+    googleMeetLink?: string;
+    mode?: "online" | "onsite";
+    maxCapacity?: number;
+}
+
 
 export async function completeTutorOnboarding(data: CompleteTutorOnboardingInput) {
     try {
@@ -138,6 +148,74 @@ export async function createSchedule(data: CreateScheduleInput) {
 
     revalidatePath("/dashboard");
     return { success: true, schedule: JSON.parse(JSON.stringify(newSchedule)) };
+}
+
+
+export async function updateSchedule(data: UpdateScheduleInput) {
+    const session = await getSession();
+
+    if (!session) {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    if (!data.scheduleId) {
+        return { success: false, error: "Schedule ID is required" };
+    }
+
+    await connectDB();
+
+    // 1. Fetch current schedule to verify existence
+    const existingSchedule = await Schedule.findById(data.scheduleId);
+    if (!existingSchedule) {
+        return { success: false, error: "Schedule not found" };
+    }
+
+    // 2. Identify and authorize tutor ownership
+    let targetTutorId = existingSchedule.tutor.toString();
+
+    if (session.role === "tutor") {
+        const tutor = await Tutor.findOne({ user: session.id });
+        if (!tutor || tutor._id.toString() !== targetTutorId) {
+            return { success: false, error: "Unauthorized to modify this schedule" };
+        }
+    }
+
+    // 3. Prevent Overlapping Slots (excluding the current schedule document)
+    const existingOverlap = await Schedule.findOne({
+        _id: { $ne: data.scheduleId },
+        tutor: targetTutorId,
+        dayOfWeek: data.dayOfWeek,
+        status: "active",
+        $or: [
+            { startTime: { $lt: data.endTime, $gte: data.startTime } },
+            { endTime: { $gt: data.startTime, $lte: data.endTime } },
+            { startTime: { $lte: data.startTime }, endTime: { $gte: data.endTime } },
+        ],
+    });
+
+    if (existingOverlap) {
+        return {
+            success: false,
+            error: `Schedule overlaps with another existing slot on ${data.dayOfWeek}.`,
+        };
+    }
+
+    // 4. Perform Update
+    const updatedSchedule = await Schedule.findByIdAndUpdate(
+        data.scheduleId,
+        {
+            dayOfWeek: data.dayOfWeek,
+            startTime: data.startTime,
+            endTime: data.endTime,
+            mode: data.mode || existingSchedule.mode || "online",
+            googleMeetLink: data.googleMeetLink ?? existingSchedule.googleMeetLink,
+            maxCapacity: data.maxCapacity ?? existingSchedule.maxCapacity ?? 1,
+        },
+        { new: true }
+    );
+
+    revalidatePath("/dashboard");
+    return { success: true, schedule: JSON.parse(JSON.stringify(updatedSchedule)) };
 }
 
 

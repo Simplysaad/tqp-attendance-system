@@ -3,35 +3,111 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { completeStudentOnboarding } from "@/actions/student.action";
+import SearchableSelect from "@/components/SearchableSelect";
+import { QURAN_SURAHS } from "@/lib/surah";
+
+interface FormState {
+    gender: "male" | "female" | "";
+    matricNumber: string;
+    faculty: string;
+    department: string;
+    level: string | number;
+    currentMemorization: {
+        surah: string;
+        aayah: string | number;
+        juz: string | number;
+        page: string | number;
+    };
+}
 
 export default function StudentOnboardingForm({ userId }: { userId: string }) {
     const router = useRouter();
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
+    // Controlled form state matching your payload structure
+    const [formData, setFormData] = useState<FormState>({
+        gender: "",
+        matricNumber: "",
+        faculty: "",
+        department: "",
+        level: "",
+        currentMemorization: {
+            surah: "",
+            aayah: "",
+            juz: "",
+            page: "",
+        },
+    });
+
+    // Universal change handler for flat inputs
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    ) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    // Change handler for nested memorization inputs
+    const handleMemorizationChange = (name: string, value: string) => {
+        setFormData((prev) => ({
+            ...prev,
+            currentMemorization: {
+                ...prev.currentMemorization,
+                [name]: value,
+            },
+        }));
+    };
+
+    // Direct change handler for custom components like SearchableSelect
+    const handleSelectChange = (fieldName: keyof FormState, value: string) => {
+        setFormData((prev) => ({
+            ...prev,
+            [fieldName]: value,
+        }));
+    };
+
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        setLoading(true);
         setError(null);
 
-        const formData = new FormData(e.currentTarget);
+
+        if (!formData.faculty) {
+            setError("Please select a faculty.");
+            return;
+        }
+
+        if (!formData.currentMemorization.surah) {
+            setError("Please select a Surah.");
+            return;
+        }
 
         const payload = {
             userId,
-            gender: formData.get("gender") as "male" | "female",
-            matricNumber: formData.get("matricNumber") as string,
-            faculty: formData.get("faculty") as string,
-            department: formData.get("department") as string,
-            level: formData.get("level") ? Number(formData.get("level")) : undefined,
+            gender: formData.gender as "male" | "female",
+            matricNumber: formData.matricNumber,
+            faculty: formData.faculty,
+            department: formData.department,
+            level: formData.level ? Number(formData.level) : undefined,
             currentMemorization: {
-                surah: formData.get("surah") as string,
-                aayah: formData.get("aayah") ? Number(formData.get("aayah")) : undefined,
-                juz: formData.get("juz") ? Number(formData.get("juz")) : undefined,
-                page: formData.get("page") ? Number(formData.get("page")) : undefined,
+                surah: formData.currentMemorization.surah,
+                aayah: formData.currentMemorization.aayah
+                    ? Number(formData.currentMemorization.aayah)
+                    : undefined,
+                juz: formData.currentMemorization.juz
+                    ? Number(formData.currentMemorization.juz)
+                    : undefined,
+                page: formData.currentMemorization.page
+                    ? Number(formData.currentMemorization.page)
+                    : undefined,
             },
         };
 
         const res = await completeStudentOnboarding(payload);
+        setLoading(true);
 
         if (!res.success) {
             setError(res.message || "An error occurred");
@@ -42,53 +118,181 @@ export default function StudentOnboardingForm({ userId }: { userId: string }) {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4 p-4 border rounded">
-            <h2 className="text-xl font-bold">Student Onboarding</h2>
-            {error && <p className="text-red-500">{error}</p>}
-
+        <div className="max-w-xl mx-auto my-8 p-6 sm:p-8 bg-white border border-emerald-900/15 rounded-2xl shadow-sm space-y-6">
             <div>
-                <label className="block text-sm font-medium">Gender *</label>
-                <select name="gender" required className="w-full border p-2 rounded">
-                    <option value="">Select Gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                </select>
+                <h2 className="text-2xl font-bold text-emerald-950">Student Onboarding</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                    Complete your academic profile and current Qur'an memorization progress.
+                </p>
             </div>
 
-            <div>
-                <label className="block text-sm font-medium">Matric Number</label>
-                <input type="text" name="matricNumber" className="w-full border p-2 rounded" />
-            </div>
+            {error && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl">
+                    {error}
+                </div>
+            )}
 
-            <div className="grid grid-cols-2 gap-2">
+            <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Gender & Matric Number */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-emerald-950 uppercase tracking-wider mb-1">
+                            Gender *
+                        </label>
+                        <select
+                            name="gender"
+                            value={formData.gender}
+                            onChange={handleChange}
+                            required
+                            className="w-full border border-emerald-900/20 p-2.5 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                        >
+                            <option value="">Select Gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-emerald-950 uppercase tracking-wider mb-1">
+                            Matric Number *
+                        </label>
+                        <input
+                            type="text"
+                            name="matricNumber"
+                            value={formData.matricNumber}
+                            onChange={handleChange}
+                            required
+                            placeholder="e.g. 21/15CD001"
+                            className="w-full border border-emerald-900/20 p-2.5 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                        />
+                    </div>
+                </div>
+
+                {/* Faculty & Department */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-emerald-950 uppercase tracking-wider mb-1">
+                            Faculty *
+                        </label>
+                        <SearchableSelect
+                            required
+                            name="faculty"
+                            value={formData.faculty}
+                            onChange={(val: string) => handleSelectChange("faculty", val)}
+                            options={["tech", "science", "arts", "administration", "social sciences"]}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-emerald-950 uppercase tracking-wider mb-1">
+                            Department *
+                        </label>
+                        <input
+                            type="text"
+                            name="department"
+                            value={formData.department}
+                            onChange={handleChange}
+                            required
+                            placeholder="e.g. Civil Engineering"
+                            className="w-full border border-emerald-900/20 p-2.5 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                        />
+                    </div>
+                </div>
+
+                {/* Level */}
                 <div>
-                    <label className="block text-sm font-medium">Faculty</label>
-                    <input type="text" name="faculty" className="w-full border p-2 rounded" />
+                    <label className="block text-xs font-semibold text-emerald-950 uppercase tracking-wider mb-1">
+                        Academic Level *
+                    </label>
+                    <input
+                        type="number"
+                        name="level"
+                        value={formData.level}
+                        onChange={handleChange}
+                        required
+                        min={100}
+                        step={100}
+                        placeholder="e.g. 300"
+                        className="w-full border border-emerald-900/20 p-2.5 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                    />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium">Department</label>
-                    <input type="text" name="department" className="w-full border p-2 rounded" />
+
+                {/* Current Memorization Container */}
+                <div className="p-4 border border-emerald-900/15 rounded-xl bg-emerald-50/50 space-y-3">
+                    <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
+                        Current Memorization Status
+                    </h3>
+
+                    <div>
+                        <SearchableSelect
+                            required
+                            placeholder="Current Surah *"
+                            name="surah"
+                            value={formData.currentMemorization.surah}
+                            options={QURAN_SURAHS.map((surah) => surah.name)}
+                            onChange={(val: string) => handleMemorizationChange("surah", val)}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                        <div>
+                            <label className="block text-[10px] font-medium text-gray-500 mb-0.5">
+                                Aayah *
+                            </label>
+                            <input
+                                type="number"
+                                name="aayah"
+                                value={formData.currentMemorization.aayah}
+                                onChange={(e) => handleMemorizationChange(e.target.name, e.target.value)}
+                                required
+                                placeholder="e.g. 255"
+                                min={1}
+                                max={QURAN_SURAHS.find((surah) => surah.name === formData.currentMemorization.surah)?.totalAayahs}
+                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-medium text-gray-500 mb-0.5">
+                                Juz (1-30)
+                            </label>
+                            <input
+                                type="number"
+                                name="juz"
+                                value={formData.currentMemorization.juz}
+                                onChange={(e) => handleMemorizationChange(e.target.name, e.target.value)}
+                                placeholder="Juz"
+                                min={1}
+                                max={30}
+                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-medium text-gray-500 mb-0.5">
+                                Page * (1-604)
+                            </label>
+                            <input
+                                type="number"
+                                name="page"
+                                value={formData.currentMemorization.page}
+                                onChange={(e) => handleMemorizationChange(e.target.name, e.target.value)}
+                                required
+                                placeholder="Page"
+                                min={1}
+                                max={604}
+                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                            />
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div>
-                <label className="block text-sm font-medium">Level</label>
-                <input type="number" name="level" min={100} step={100} className="w-full border p-2 rounded" placeholder="e.g. 300" />
-            </div>
-
-            <fieldset className="border p-3 rounded space-y-2">
-                <legend className="text-sm font-semibold">Current Memorization Status</legend>
-                <input type="text" name="surah" placeholder="Surah (e.g. Al-Baqarah)" className="w-full border p-1 rounded text-sm" />
-                <div className="grid grid-cols-3 gap-2">
-                    <input type="number" name="aayah" placeholder="Aayah" min={1} className="border p-1 rounded text-sm" />
-                    <input type="number" name="juz" placeholder="Juz (1-30)" min={1} max={30} className="border p-1 rounded text-sm" />
-                    <input type="number" name="page" placeholder="Page (1-604)" min={1} max={604} className="border p-1 rounded text-sm" />
-                </div>
-            </fieldset>
-
-            <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-2 rounded">
-                {loading ? "Saving..." : "Complete Setup"}
-            </button>
-        </form>
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3 bg-emerald-900 text-white text-sm font-semibold rounded-xl hover:bg-emerald-950 transition disabled:opacity-50 cursor-pointer shadow-md shadow-emerald-950/10"
+                >
+                    {loading ? "Saving Setup..." : "Complete Setup"}
+                </button>
+            </form>
+        </div>
     );
 }

@@ -3,6 +3,8 @@ import Student from "@/models/student.model";
 import Schedule from "@/models/schedule.model";
 import Session from "@/models/session.model";
 import JoinClassButton from "@/components/JoinClassButton";
+import Link from "next/link";
+import { getNextOccurrenceDate } from "@/lib/time";
 
 interface StudentDashboardProps {
     userId: string;
@@ -30,7 +32,8 @@ export default async function StudentDashboard({ userId }: StudentDashboardProps
     }
 
     // 2. Fetch the schedule this student is enrolled in
-    const assignedSchedule: any = await Schedule.findOne({
+    // const assignedSchedule: any = await Schedule.findOne({
+    const schedules: any[] = await Schedule.find({
         students: student._id,
         status: "active",
     })
@@ -39,6 +42,15 @@ export default async function StudentDashboard({ userId }: StudentDashboardProps
             populate: { path: "user", select: "name" },
         })
         .lean();
+
+    const upcomingSchedules = schedules
+        .map((schedule) => ({
+            schedule,
+            nextDate: getNextOccurrenceDate(schedule.dayOfWeek, schedule.startTime),
+        }))
+        .sort((a, b) => a.nextDate.getTime() - b.nextDate.getTime());
+
+    const assignedSchedule = upcomingSchedules[0]?.schedule || null;
 
     // 3. Check if tutor activated today's session link
     const today = new Date();
@@ -116,12 +128,14 @@ export default async function StudentDashboard({ userId }: StudentDashboardProps
                     </p>
                 </div>
 
-                {assignedSchedule && (
+                {assignedSchedule ? (
                     <JoinClassButton
                         isLinkActive={isLinkActive}
                         meetLinkAvailable={hasMeetLink}
                     />
-                )}
+                ) : <Link
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-semibold shadow-sm transition flex items-center gap-2"
+                    href={"/enroll"}>Enroll</Link>}
             </div>
 
             {/* Progress Cards */}

@@ -1,14 +1,14 @@
 import connectDB from "@/lib/db";
 import Tutor, { minutesToTime } from "@/models/tutor.model";
 import Schedule, { IScheduleDocument } from "@/models/schedule.model";
-import Link from "next/link";
 import ActivateNearestScheduleButton from "@/components/ActivateLinkButton";
 import TutorStudentsList from "@/components/TutorStudentsList";
+import CreateScheduleModal from "@/components/CreateScheduleModal";
+import EditScheduleModal from "@/components/EditScheduleModal";
 
 interface TutorDashboardProps {
     userId: string;
 }
-
 
 export default async function TutorDashboard({ userId }: TutorDashboardProps) {
     await connectDB();
@@ -24,7 +24,6 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
         );
     }
 
-    // Fetch active schedules for this tutor and populate assigned students
     const schedules = await Schedule.find({ tutor: tutor._id, status: "active" })
         .populate("students", "fullName email")
         .sort({ dayOfWeek: 1, startTime: 1 })
@@ -43,6 +42,7 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
                     <span className="font-bold text-lg text-emerald-600">{tutor.maximumStudents} Max</span>
                 </div>
             </div>
+
             {/* Quick Action: Start/Activate Session */}
             <div className="p-5 border rounded-lg bg-emerald-50 border-emerald-200 flex justify-between items-center">
                 <div>
@@ -53,12 +53,7 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
                 </div>
                 <div className="flex gap-2">
                     <ActivateNearestScheduleButton />
-                    <Link
-                        href="/schedule/create"
-                        className="px-4 py-2 bg-white text-emerald-700 border border-emerald-300 rounded-md text-sm font-medium hover:bg-emerald-100 transition"
-                    >
-                        Create Schedule
-                    </Link>
+                    <CreateScheduleModal buttonLabel="Create Schedule" />
                 </div>
             </div>
 
@@ -88,12 +83,7 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
                         <h3 className="font-semibold text-gray-800">Active Class Schedules</h3>
                         <p className="text-xs text-gray-500">Your scheduled class slots and meeting links</p>
                     </div>
-                    <Link
-                        href="/schedule/create"
-                        className="px-3 py-1.5 bg-emerald-600 text-white rounded-md text-xs font-medium hover:bg-emerald-700 transition"
-                    >
-                        + Add New Schedule
-                    </Link>
+                    <CreateScheduleModal buttonLabel="+ Add New Schedule" />
                 </div>
 
                 {schedules && schedules.length > 0 ? (
@@ -104,9 +94,21 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
                                     <span className="font-bold capitalize text-emerald-800 text-base">
                                         {item.dayOfWeek}
                                     </span>
-                                    <span className="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-medium">
-                                        {item.mode}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-medium">
+                                            {item.mode}
+                                        </span>
+                                        {/* Edit Schedule Modal Button */}
+                                        <EditScheduleModal
+                                            schedule={{
+                                                _id: item._id.toString(),
+                                                dayOfWeek: item.dayOfWeek,
+                                                startTime: item.startTime,
+                                                endTime: item.endTime,
+                                                googleMeetLink: item.googleMeetLink,
+                                            }}
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="text-gray-700 font-medium">
@@ -138,17 +140,10 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
                 ) : (
                     <div className="text-center py-6 border border-dashed rounded-lg bg-gray-50 space-y-2">
                         <p className="text-sm text-gray-500">No active class schedules created yet.</p>
-                        <Link
-                            href="/schedule/create"
-                            className="inline-block text-xs text-emerald-600 font-semibold hover:underline"
-                        >
-                            Create your first class schedule
-                        </Link>
+                        <CreateScheduleModal buttonLabel="Create your first class schedule" />
                     </div>
                 )}
             </div>
-
-
 
             <TutorStudentsList userId={userId} />
         </div>

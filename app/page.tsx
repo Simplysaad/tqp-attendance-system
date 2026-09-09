@@ -18,44 +18,6 @@ export default function LandingPage() {
     return (
         <div className="min-h-screen bg-[#FBFBF9] text-gray-900 selection:bg-amber-100 selection:text-amber-900 font-sans antialiased">
             {/* =========================================================================
-          NAVIGATION BAR
-         ========================================================================= */}
-            <header className="sticky top-0 z-50 bg-[#FBFBF9]/90 backdrop-blur-md border-b border-amber-900/10 transition-all">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
-                    {/* Brand Logo */}
-                    <Link href="/" className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-950 flex items-center justify-center text-amber-400 shadow-md shadow-emerald-950/20 group-hover:scale-105 transition-transform border border-amber-500/30">
-                            <BookOpen className="w-5 h-5 sm:w-6 sm:h-6" />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="font-bold text-lg sm:text-xl tracking-tight text-emerald-950">
-                                TQP <span className="text-amber-600 font-serif font-normal text-base sm:text-lg">Portal</span>
-                            </span>
-                            <span className="text-[10px] tracking-widest uppercase font-medium text-emerald-800/70 -mt-1">
-                                Tajweed & Retention
-                            </span>
-                        </div>
-                    </Link>
-
-                    {/* Action CTAs */}
-                    <div className="flex items-center gap-2 sm:gap-4">
-                        <Link
-                            href="/login"
-                            className="px-3.5 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-emerald-950 hover:text-emerald-800 transition"
-                        >
-                            Sign In
-                        </Link>
-                        <Link
-                            href="/enroll"
-                            className="px-4 py-2 sm:px-6 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-emerald-900 hover:bg-emerald-950 rounded-lg sm:rounded-xl shadow-lg shadow-emerald-950/15 border border-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                        >
-                            Find a Tutor
-                        </Link>
-                    </div>
-                </div>
-            </header>
-
-            {/* =========================================================================
           HERO SECTION: "No More Hurdles in Your Qur'an Journey"
          ========================================================================= */}
             <section className="relative overflow-hidden pt-12 pb-16 sm:pt-20 sm:pb-28 lg:pt-24 lg:pb-36">

@@ -33,6 +33,9 @@ PROGRESS:
 - 
 
 
+ISSUES:
+* Vague error messages 
+* Unnecessary window.alert() everywhere
 
 
 

@@ -20,7 +20,7 @@ async function setUserSessionCookie(user: Record<string, any>) {
         id: user._id,
         email: user.email,
         role: user.role,
-        fullName: user.fullName,
+        name: user.name,
     });
 
     cookieStore.set("session", sessionData, {
