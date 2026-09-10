@@ -1,0 +1,91 @@
+==============================================================================
+  TQP ATTENDANCE SYSTEM — END-TO-END INTEGRATION TEST REPORT
+==============================================================================
+  Target        : http://localhost:3000
+  Run at        : 2026-09-10T20:47:56.137Z
+  Browser       : Chromium (Playwright, headless)
+  Signup flow   : ENABLED — creates a real student account
+
+  RESULT        : PASS — no failures
+  Totals        : 18 checks → 16 passed, 2 warnings, 0 failed
+
+------------------------------------------------------------------------------
+  PAGE LOAD / ROUTE SMOKE TESTS
+------------------------------------------------------------------------------
+  [PASS] Landing page  (/)
+         - HTTP 200 · final: http://localhost:3000/ · text length: 2379
+  [PASS] Login page  (/login)
+         - HTTP 200 · final: http://localhost:3000/login · text length: 247
+  [PASS] Register page  (/register)
+         - HTTP 200 · final: http://localhost:3000/register · text length: 335
+  [PASS] Enroll  (/enroll) → expects redirect to /login
+         - HTTP 200 · final: http://localhost:3000/login?next=%2Fenroll
+         - Correctly redirected unauthenticated user to /login
+  [PASS] Dashboard  (/dashboard) → expects redirect to /login
+         - HTTP 200 · final: http://localhost:3000/login
+         - Correctly redirected unauthenticated user to /login
+  [PASS] Admin  (/admin) → expects redirect to /login
+         - HTTP 200 · final: http://localhost:3000/login
+         - Correctly redirected unauthenticated user to /login
+  [PASS] Onboarding  (/onboarding) → expects redirect to /login
+         - HTTP 200 · final: http://localhost:3000/login
+         - Correctly redirected unauthenticated user to /login
+
+------------------------------------------------------------------------------
+  NAVIGATION FLOWS (link clicks)
+------------------------------------------------------------------------------
+  [PASS] Landing → click 'Sign In' → /login
+         - final: http://localhost:3000/login
+  [PASS] Landing → click 'Enroll with a Tutor Now' → /enroll → /login redirect
+         - final: http://localhost:3000/login?next=%2Fenroll
+  [PASS] Login → click 'Register Here' → /register
+         - final: http://localhost:3000/register
+  [PASS] Register → click 'Sign In Here' → /login
+         - final: http://localhost:3000/login
+
+------------------------------------------------------------------------------
+  FORM INTERACTION FLOWS
+------------------------------------------------------------------------------
+  [PASS] Login form — submit invalid credentials (read-only)
+         - final: http://localhost:3000/login
+         - Alert shown: "Invalid email or password"
+
+------------------------------------------------------------------------------
+  LINKED ROUTE REACHABILITY (broken-link check)
+------------------------------------------------------------------------------
+  (none)
+
+------------------------------------------------------------------------------
+  PROTECTED ROUTES (AUTHENTICATED SESSION CHECKS)
+------------------------------------------------------------------------------
+  [PASS] [Student] Student Dashboard (/dashboard)
+         - HTTP 200 · final: http://localhost:3000/onboarding
+  [PASS] [Student] Student Enrollment (/enroll)
+         - HTTP 200 · final: http://localhost:3000/enroll
+  [WARN] [Student] Student Profile (/profile)
+         - HTTP 404 · final: http://localhost:3000/profile
+         - Expected text matching /Profile|Settings|Account/i not found
+  [PASS] [Tutor] Tutor Dashboard (/dashboard)
+         - HTTP 200 · final: http://localhost:3000/dashboard
+  [PASS] [Tutor] Mark Attendance (/attendance)
+         - HTTP 404 · final: http://localhost:3000/attendance
+  [WARN] [Tutor] Tutor Profile (/profile)
+         - HTTP 404 · final: http://localhost:3000/profile
+         - Expected text matching /Profile|Settings/i not found
+
+------------------------------------------------------------------------------
+  CONSOLE / PAGE ERRORS
+------------------------------------------------------------------------------
+  (none captured — excludes benign console.log and resource-404 noise)
+
+------------------------------------------------------------------------------
+  NETWORK ERRORS & HTTP >=400 RESPONSES (deduplicated)
+------------------------------------------------------------------------------
+  • HTTP 404 GET http://localhost:3000/profile
+  • HTTP 404 POST http://localhost:3000/profile
+  • HTTP 404 GET http://localhost:3000/attendance
+  • HTTP 404 POST http://localhost:3000/attendance
+
+==============================================================================
+  END OF REPORT — SUITE PASSED
+==============================================================================
