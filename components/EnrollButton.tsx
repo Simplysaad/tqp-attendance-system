@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { enrollWithTutor } from "@/actions/enrollment.action";
+import { useRouter } from "next/navigation";
 
 interface EnrollButtonProps {
     tutorId: string;
@@ -15,6 +16,7 @@ export default function EnrollButton({
     isAlreadyEnrolled = false,
 }: EnrollButtonProps) {
     const [isPending, startTransition] = useTransition();
+    const router = useRouter()
 
     const handleEnroll = () => {
         if (confirm("By enrolling, you commit to this tutor's weekly class schedule. Continue?")) {
@@ -22,6 +24,7 @@ export default function EnrollButton({
                 const res = await enrollWithTutor(tutorId);
                 if (!res.success) {
                     alert(res.error);
+                    router.push("/dashboard");
                 } else {
                     alert(res.message);
                 }

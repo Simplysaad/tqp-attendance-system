@@ -5,8 +5,8 @@ import Tutor from "@/models/tutor.model";
 import { getSession } from "@/actions/user.action";
 import EnrollTutorButton from "@/components/EnrollButton";
 import { redirect } from "next/navigation";
-import { startTransition } from "react";
 import { enrollWithTutor } from "@/actions/enrollment.action";
+import { Calendar, Clock } from "lucide-react";
 
 function minutesToTime(minutes: number): string {
     const hours = Math.floor(minutes / 60);
@@ -15,46 +15,61 @@ function minutesToTime(minutes: number): string {
 }
 
 interface PageProps {
-    searchParams: Promise<{ tutor_id?: string }>;
+    searchParams: Promise<{ tutor_id?: string; error?: string; message?: string }>;
 }
 
 export default async function EnrollPage({ searchParams }: PageProps) {
-    const { tutor_id } = await searchParams;
+    const { tutor_id, error, message } = await searchParams;
 
     await connectDB();
     const authSession = await getSession();
 
-    // Handle authentication redirect
+    // 1. Authentication Check
     if (!authSession) {
         const nextUrl = tutor_id ? `/enroll?tutor_id=${tutor_id}` : "/enroll";
         redirect(`/login?next=${encodeURIComponent(nextUrl)}`);
     }
 
+    if (authSession.role !== "student") {
+        redirect("/dashboard");
+    }
+
+    // 2. Direct Server Action Flow (When tutor_id is provided)
     if (tutor_id) {
-        if (confirm("By enrolling, you commit to this tutor's weekly class schedule. Continue?")) {
-            startTransition(async () => {
-                const res = await enrollWithTutor(tutor_id);
-                if (!res.success) {
-                    alert(res.error);
-                } else {
-                    alert(res.message);
-                }
-            });
+        const res = await enrollWithTutor(tutor_id);
+
+        if (!res.success) {
+            // Pass error back to the page or redirect to dashboard
+            redirect(`/dashboard?error=${encodeURIComponent(res.error || "Enrollment failed")}`);
+        } else {
+            // Redirect with success message
+            redirect(`/dashboard?message=${encodeURIComponent(res.message || "Enrolled successfully!")}`);
         }
     }
 
+    // 3. Fallback: Render Tutor Selection UI when no tutor_id is provided
     let currentStudentId: string | null = null;
     if (authSession?.role === "student") {
         const student = await Student.findOne({ user: authSession.id }).lean();
         if (student) currentStudentId = student._id.toString();
     }
 
-    // Fetch data
     const tutors = await Tutor.find().populate("user", "name email").lean();
-    const allSchedules = await Schedule.find({ status: "active" }).lean();
+    const allSchedules = await Schedule.find({}).lean();
 
     return (
         <div className="max-w-5xl mx-auto p-6 space-y-8">
+            {error && (
+                <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
+                    {error}
+                </div>
+            )}
+            {message && (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl">
+                    {message}
+                </div>
+            )}
+
             <div>
                 <h1 className="text-3xl font-bold text-gray-900">Choose a Tutor</h1>
                 <p className="text-gray-600 text-sm mt-1">
@@ -65,7 +80,7 @@ export default async function EnrollPage({ searchParams }: PageProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {tutors.map((tutor: any) => {
                     const tutorIdStr = tutor._id.toString();
-
+                    console.log("tutorIdStr", tutorIdStr)
                     const tutorSchedules = allSchedules.filter(
                         (s) => s.tutor.toString() === tutorIdStr
                     );
@@ -93,9 +108,7 @@ export default async function EnrollPage({ searchParams }: PageProps) {
                                                 ? `${tutor.gender === "female" ? "Ustadhah" : "Ustadh"} ${tutor.user.name.split(" ")[1] || tutor.user.name}`
                                                 : "Qur'an Tutor"}
                                         </h2>
-                                        <p className="text-xs text-gray-500">
-                                            {tutor.bio}
-                                        </p>
+                                        <p className="text-xs text-gray-500">{tutor.bio}</p>
                                     </div>
                                     <span
                                         className={`text-xs px-2.5 py-1 rounded-full font-bold ${isFilled
@@ -118,11 +131,13 @@ export default async function EnrollPage({ searchParams }: PageProps) {
                                                     key={slot._id.toString()}
                                                     className="flex justify-between items-center bg-gray-50 p-2.5 rounded-lg border text-xs"
                                                 >
-                                                    <span className="font-semibold text-gray-800 capitalize">
-                                                        📅 {slot.dayOfWeek}
+                                                    <span className="inline-flex items-center gap-1.5 font-semibold text-gray-800 capitalize">
+                                                        <Calendar className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                                                        {slot.dayOfWeek}
                                                     </span>
-                                                    <span className="font-mono text-emerald-700 font-medium">
-                                                        🕒 {minutesToTime(slot.startTime)} - {minutesToTime(slot.endTime)}
+                                                    <span className="inline-flex items-center gap-1.5 font-mono text-emerald-700 font-medium">
+                                                        <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                                        {minutesToTime(slot.startTime)} - {minutesToTime(slot.endTime)}
                                                     </span>
                                                 </div>
                                             ))}

@@ -12,6 +12,7 @@ import {
     ArrowRight,
     Loader2,
 } from "lucide-react";
+import { PasswordInput } from "@/components/PasswordInput";
 
 function LoginFormContent() {
     const router = useRouter();
@@ -119,16 +120,15 @@ function LoginFormContent() {
                                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                                     <Lock className="w-4 h-4" />
                                 </div>
-                                <input
-                                    type="password"
+                                <PasswordInput
                                     id="password"
                                     name="password"
                                     value={formData.password}
                                     onChange={handleChange}
                                     required
                                     placeholder="Enter your password"
-                                    className="block w-full pl-10 pr-3 py-2.5 sm:py-3 text-sm text-gray-900 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-800 focus:border-transparent transition"
                                 />
+
                             </div>
                         </div>
 

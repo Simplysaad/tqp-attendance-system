@@ -6,12 +6,20 @@ import Student from "@/models/student.model";
 import Tutor from "@/models/tutor.model";
 import { getSession } from "@/actions/user.action";
 import { revalidatePath } from "next/cache";
-
+import Types from "mongoose";
 
 export async function enrollWithTutor(tutorId: string) {
     const authSession = await getSession();
 
-    if (!authSession || authSession.role !== "student") {
+    if (!authSession) {
+        return {
+            success: false,
+            error: "UNAUTHENTICATED",
+            redirectTo: `/login?next=${encodeURIComponent(`/enroll?tutor_id=${tutorId}`)}`
+        };
+    }
+
+    if (authSession.role !== "student") {
         return { success: false, error: "Only students can enroll with a tutor." };
     }
 
@@ -23,10 +31,13 @@ export async function enrollWithTutor(tutorId: string) {
         return { success: false, error: "Student profile not found." };
     }
 
-    // 2. Check if student is already enrolled with ANY tutor
+    const studentObjectId = student._id.toHexString()
+    // const tutorObjectId = new Types.ObjectId( tutorId.toString())
+    const tutorObjectId = tutorId
+
+    // 2. Check if student is already enrolled in any active schedule
     const existingEnrollment = await Schedule.findOne({
-        students: student._id,
-        status: "active",
+        students: studentObjectId,
     });
 
     if (existingEnrollment) {
@@ -36,18 +47,26 @@ export async function enrollWithTutor(tutorId: string) {
         };
     }
 
-    // 3. Verify target tutor & calculate total capacity
-    const tutor = await Tutor.findById(tutorId);
+    // 3. Verify target tutor
+    const tutor = await Tutor.findById(tutorObjectId);
     if (!tutor) {
         return { success: false, error: "Tutor not found." };
     }
 
-    const tutorSchedules = await Schedule.find({ tutor: tutorId, status: "active" });
+    // Fetch active schedules for this tutor
+    const tutorSchedules = await Schedule.find({ tutor: tutorObjectId });
 
-    // Count unique students across tutor's schedules
+    if (!tutorSchedules || tutorSchedules.length === 0) {
+        return {
+            success: false,
+            error: "This tutor does not have any active class schedules available for enrollment.",
+        };
+    }
+
+    // Calculate current unique enrolled capacity
     const currentStudents = new Set<string>();
     tutorSchedules.forEach((sched) => {
-        sched.students?.forEach((stId) => currentStudents.add(stId.toString()));
+        sched.students?.forEach((stId: any) => currentStudents.add(stId.toString()));
     });
 
     const maxCapacity = tutor.maximumStudents || 5;
@@ -55,14 +74,15 @@ export async function enrollWithTutor(tutorId: string) {
         return { success: false, error: "This tutor's class is already filled up." };
     }
 
-    // 4. Enroll student into ALL of this tutor's active schedules
-    await Schedule.updateMany(
-        { tutor: tutorId, status: "active" },
-        { $addToSet: { students: student._id } }
+    // 4. Enroll student into ALL active schedules for this tutor
+    const updateResult = await Schedule.updateMany(
+        { tutor: tutorObjectId, status: "active" },
+        { $addToSet: { students: studentObjectId } }
     );
 
-    revalidatePath("/enroll");
-    revalidatePath("/dashboard");
+    if (updateResult.modifiedCount === 0) {
+        return { success: false, error: "Failed to process enrollment. Please try again." };
+    }
 
     return {
         success: true,
@@ -70,14 +90,13 @@ export async function enrollWithTutor(tutorId: string) {
     };
 }
 
-
 export async function getTutorStudents(userId: string) {
     await connectDB();
 
     const tutor = await Tutor.findOne({ user: userId }).lean();
     if (!tutor) return { success: false, students: [] };
 
-    // Fetch all schedules for this tutor and populate student details
+    // Fetch active schedules and populate student/user details
     const schedules = await Schedule.find({ tutor: tutor._id, status: "active" })
         .populate({
             path: "students",
@@ -85,19 +104,23 @@ export async function getTutorStudents(userId: string) {
         })
         .lean();
 
-    // Map and deduplicate students across multiple schedule slots
+    // Map and deduplicate unique students
     const studentMap = new Map();
 
     schedules.forEach((sched: any) => {
         if (sched.students && Array.isArray(sched.students)) {
             sched.students.forEach((st: any) => {
                 if (st && st._id && !studentMap.has(st._id.toString())) {
+                    const startMins = sched.startTime || 0;
+                    const hours = Math.floor(startMins / 60).toString().padStart(2, "0");
+                    const mins = (startMins % 60).toString().padStart(2, "0");
+
                     studentMap.set(st._id.toString(), {
                         _id: st._id.toString(),
                         fullName: st.fullName || st.user?.name || "Enrolled Student",
                         email: st.email || st.user?.email || "N/A",
                         phone: st.phoneNumber || "N/A",
-                        enrolledSlot: `${sched.dayOfWeek} (${Math.floor(sched.startTime / 60)}:00)`,
+                        enrolledSlot: `${sched.dayOfWeek} (${hours}:${mins})`,
                     });
                 }
             });
