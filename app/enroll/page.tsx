@@ -4,6 +4,9 @@ import Student from "@/models/student.model";
 import Tutor from "@/models/tutor.model";
 import { getSession } from "@/actions/user.action";
 import EnrollTutorButton from "@/components/EnrollButton";
+import { redirect } from "next/navigation";
+import { startTransition } from "react";
+import { enrollWithTutor } from "@/actions/enrollment.action";
 
 function minutesToTime(minutes: number): string {
     const hours = Math.floor(minutes / 60);
@@ -11,17 +14,42 @@ function minutesToTime(minutes: number): string {
     return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
 }
 
-export default async function EnrollPage() {
+interface PageProps {
+    searchParams: Promise<{ tutor_id?: string }>;
+}
+
+export default async function EnrollPage({ searchParams }: PageProps) {
+    const { tutor_id } = await searchParams;
+
     await connectDB();
     const authSession = await getSession();
 
+    // Handle authentication redirect
+    if (!authSession) {
+        const nextUrl = tutor_id ? `/enroll?tutor_id=${tutor_id}` : "/enroll";
+        redirect(`/login?next=${encodeURIComponent(nextUrl)}`);
+    }
+
+    if (tutor_id) {
+        if (confirm("By enrolling, you commit to this tutor's weekly class schedule. Continue?")) {
+            startTransition(async () => {
+                const res = await enrollWithTutor(tutor_id);
+                if (!res.success) {
+                    alert(res.error);
+                } else {
+                    alert(res.message);
+                }
+            });
+        }
+    }
+
     let currentStudentId: string | null = null;
-    if (authSession && authSession.role === "student") {
+    if (authSession?.role === "student") {
         const student = await Student.findOne({ user: authSession.id }).lean();
         if (student) currentStudentId = student._id.toString();
     }
 
-    // Fetch all tutors along with their active schedules
+    // Fetch data
     const tutors = await Tutor.find().populate("user", "name email").lean();
     const allSchedules = await Schedule.find({ status: "active" }).lean();
 
@@ -36,12 +64,12 @@ export default async function EnrollPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {tutors.map((tutor: any) => {
-                    // Get all schedules belonging to this tutor
+                    const tutorIdStr = tutor._id.toString();
+
                     const tutorSchedules = allSchedules.filter(
-                        (s) => s.tutor.toString() === tutor._id.toString()
+                        (s) => s.tutor.toString() === tutorIdStr
                     );
 
-                    // Get unique enrolled students across all of this tutor's schedules
                     const uniqueStudentIds = new Set<string>();
                     tutorSchedules.forEach((s) => {
                         s.students?.forEach((stId: any) => uniqueStudentIds.add(stId.toString()));
@@ -50,14 +78,13 @@ export default async function EnrollPage() {
                     const totalEnrolled = uniqueStudentIds.size;
                     const maxCapacity = tutor.maximumStudents || 5;
                     const isFilled = totalEnrolled >= maxCapacity;
-                    const isAlreadyEnrolled = currentStudentId && uniqueStudentIds.has(currentStudentId);
+                    const isAlreadyEnrolled = currentStudentId ? uniqueStudentIds.has(currentStudentId) : false;
 
                     return (
                         <div
-                            key={tutor._id.toString()}
+                            key={tutorIdStr}
                             className="border rounded-xl p-6 bg-white shadow-sm flex flex-col justify-between space-y-5 hover:border-emerald-300 transition"
                         >
-                            {/* Tutor Header */}
                             <div className="space-y-4">
                                 <div className="flex justify-between items-start border-b pb-3">
                                     <div>
@@ -80,7 +107,6 @@ export default async function EnrollPage() {
                                     </span>
                                 </div>
 
-                                {/* Tutor's Schedule List */}
                                 <div className="space-y-2">
                                     <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                         Weekly Class Timetable
@@ -109,11 +135,10 @@ export default async function EnrollPage() {
                                 </div>
                             </div>
 
-                            {/* Enrollment Action */}
                             <EnrollTutorButton
-                                tutorId={tutor._id.toString()}
+                                tutorId={tutorIdStr}
                                 isFilled={isFilled}
-                                isAlreadyEnrolled={Boolean(isAlreadyEnrolled)}
+                                isAlreadyEnrolled={isAlreadyEnrolled}
                             />
                         </div>
                     );

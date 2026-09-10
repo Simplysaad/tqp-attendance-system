@@ -2,7 +2,7 @@
 
 import React, { useState, ChangeEvent, FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { registerUser } from "@/actions/user.action";
 import { IUser } from "@/models/user.model";
 import {
@@ -27,6 +27,13 @@ const RegisterPage = () => {
         role: "student",
         isActive: true,
     });
+
+    const searchParams = useSearchParams();
+    const next = searchParams.get("next");
+
+    const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : "/login";
+    const onboardingHref = next ? `/onboarding?next=${encodeURIComponent(next)}` : "/onboarding";
+
 
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -69,7 +76,7 @@ const RegisterPage = () => {
                     password: "",
                 });
 
-                router.push("/onboarding");
+                router.push(onboardingHref);
             } else {
                 console.error("Error registering user:", response.error);
                 alert(
@@ -83,6 +90,8 @@ const RegisterPage = () => {
             setLoading(false);
         }
     };
+
+
 
     return (
         <div className="min-h-screen bg-[#FBFBF9] flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-amber-100 selection:text-amber-900">
@@ -120,14 +129,14 @@ const RegisterPage = () => {
                                     type="button"
                                     onClick={() => handleRoleSelect("student")}
                                     className={`relative flex flex-col items-center justify-center p-3.5 rounded-xl cursor-pointer text-center transition-all ${formData.role === "student"
-                                            ? "border-2 border-emerald-900 bg-emerald-50/60 text-emerald-950 shadow-sm"
-                                            : "border border-gray-200 hover:border-emerald-700/40 bg-white text-gray-600 hover:text-emerald-950"
+                                        ? "border-2 border-emerald-900 bg-emerald-50/60 text-emerald-950 shadow-sm"
+                                        : "border border-gray-200 hover:border-emerald-700/40 bg-white text-gray-600 hover:text-emerald-950"
                                         }`}
                                 >
                                     <GraduationCap
                                         className={`w-5 h-5 mb-1 transition-colors ${formData.role === "student"
-                                                ? "text-emerald-900"
-                                                : "text-gray-400"
+                                            ? "text-emerald-900"
+                                            : "text-gray-400"
                                             }`}
                                     />
                                     <span className="text-xs font-bold">Student</span>
@@ -137,14 +146,14 @@ const RegisterPage = () => {
                                     type="button"
                                     onClick={() => handleRoleSelect("tutor")}
                                     className={`relative flex flex-col items-center justify-center p-3.5 rounded-xl cursor-pointer text-center transition-all ${formData.role === "tutor"
-                                            ? "border-2 border-emerald-900 bg-emerald-50/60 text-emerald-950 shadow-sm"
-                                            : "border border-gray-200 hover:border-emerald-700/40 bg-white text-gray-600 hover:text-emerald-950"
+                                        ? "border-2 border-emerald-900 bg-emerald-50/60 text-emerald-950 shadow-sm"
+                                        : "border border-gray-200 hover:border-emerald-700/40 bg-white text-gray-600 hover:text-emerald-950"
                                         }`}
                                 >
                                     <BookOpen
                                         className={`w-5 h-5 mb-1 transition-colors ${formData.role === "tutor"
-                                                ? "text-emerald-900"
-                                                : "text-gray-400"
+                                            ? "text-emerald-900"
+                                            : "text-gray-400"
                                             }`}
                                     />
                                     <span className="text-xs font-bold">Ustadh / Tutor</span>
@@ -276,7 +285,7 @@ const RegisterPage = () => {
                     <div className="pt-4 border-t border-gray-100 text-center text-xs text-gray-600">
                         Already have an account?{" "}
                         <Link
-                            href="/login"
+                            href={loginHref}
                             className="font-bold text-emerald-900 hover:text-emerald-950 hover:underline transition"
                         >
                             Sign In Here

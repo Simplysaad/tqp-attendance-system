@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, ChangeEvent, FormEvent } from "react";
+import React, { useState, ChangeEvent, FormEvent, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { loginUser } from "@/actions/user.action";
 import {
     BookOpen,
@@ -13,13 +13,15 @@ import {
     Loader2,
 } from "lucide-react";
 
-const LoginPage = () => {
+function LoginFormContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const next = searchParams.get("next");
+
     const [formData, setFormData] = useState({
         email: "",
         password: "",
     });
-
     const [loading, setLoading] = useState<boolean>(false);
 
     const handleChange = (
@@ -38,19 +40,11 @@ const LoginPage = () => {
 
         try {
             const response = await loginUser(formData.email, formData.password);
-            console.log("login response", response);
 
             if (response.success) {
-                console.log("Login successful:", response.user);
-                alert("Login successful!");
-
-                setFormData({
-                    email: "",
-                    password: "",
-                });
-                router.push("/dashboard");
+                setFormData({ email: "", password: "" });
+                router.push(next || "/dashboard");
             } else {
-                console.error("Error logging in user:", response.error);
                 alert(response.error || "Login failed. Please try again.");
             }
         } catch (error) {
@@ -60,6 +54,8 @@ const LoginPage = () => {
             setLoading(false);
         }
     };
+
+    const registerHref = next ? `/register?next=${encodeURIComponent(next)}` : "/register";
 
     return (
         <div className="min-h-screen bg-[#FBFBF9] flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-amber-100 selection:text-amber-900">
@@ -160,7 +156,7 @@ const LoginPage = () => {
                     <div className="pt-4 border-t border-gray-100 text-center text-xs text-gray-600">
                         Don&apos;t have an account yet?{" "}
                         <Link
-                            href="/signup"
+                            href={registerHref}
                             className="font-bold text-emerald-900 hover:text-emerald-950 hover:underline transition"
                         >
                             Register Here
@@ -176,6 +172,16 @@ const LoginPage = () => {
             </div>
         </div>
     );
-};
+}
 
-export default LoginPage;
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-900" />
+            </div>
+        }>
+            <LoginFormContent />
+        </Suspense>
+    );
+}
