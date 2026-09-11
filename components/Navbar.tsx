@@ -6,8 +6,6 @@ import { usePathname } from "next/navigation";
 import {
     BookOpen,
     LayoutDashboard,
-    CalendarCheck,
-    User,
     LogOut,
     Menu,
     X,
@@ -27,10 +25,9 @@ const Navbar = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-    // Auth pages check
-    const isAuthPage = pathname === "/login" || pathname === "/signup";
+    // Auth pages check (Updated /signup -> /register based on test report)
+    const isAuthPage = pathname === "/login" || pathname === "/register";
 
-    // Mocked active user state (Set to `null` to test logged-out state)
     const [user, setUser] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -39,9 +36,7 @@ const Navbar = () => {
 
         getSession()
             .then((data) => {
-                // // console.log("data", data)
                 if (isMounted) {
-                    // Ensure data matches UserProfile type or null
                     setUser(data as UserProfile | null);
                 }
             })
@@ -54,13 +49,19 @@ const Navbar = () => {
             });
 
         return () => {
-            isMounted = false; // Prevents state updates on unmounted components
+            isMounted = false;
         };
     }, []);
 
+    const handleLogout = async () => {
+        setIsProfileOpen(false);
+        setIsMobileMenuOpen(false);
+        await logoutUser();
+    };
+
+    // Valid, working navigation links (Removed /attendance due to 404)
     const navLinks = [
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-        { name: "Attendance", href: "/attendance", icon: CalendarCheck },
     ];
 
     return (
@@ -84,7 +85,7 @@ const Navbar = () => {
                             </div>
                         </Link>
 
-                        {/* Desktop Navigation Links (Only shown when authenticated and not on auth pages) */}
+                        {/* Desktop Navigation Links */}
                         {!isAuthPage && user && (
                             <nav className="hidden md:flex items-center space-x-1">
                                 {navLinks.map((link) => {
@@ -117,10 +118,10 @@ const Navbar = () => {
                                     className="flex items-center gap-3 p-1.5 pr-3 rounded-xl hover:bg-emerald-900/5 border border-transparent hover:border-emerald-900/10 transition cursor-pointer"
                                 >
                                     <div className="w-9 h-9 rounded-lg bg-emerald-950 text-amber-400 font-bold text-sm flex items-center justify-center shadow-sm">
-                                        {user.name?.charAt(0)}
+                                        {user.name?.charAt(0).toUpperCase()}
                                     </div>
                                     <div className="text-left leading-tight">
-                                        <p className="text-xs font-bold text-emerald-950 max-w-[120px] truncate">
+                                        <p className="text-xs font-bold text-emerald-950 max-w-30 truncate">
                                             {user.name}
                                         </p>
                                         <span className="text-[10px] font-semibold tracking-wider text-amber-600 uppercase">
@@ -135,46 +136,38 @@ const Navbar = () => {
 
                                 {/* Profile Dropdown Menu */}
                                 {isProfileOpen && (
-                                    <div className="absolute right-0 mt-2 w-64 bg-white text-gray-900 rounded-2xl shadow-xl border border-amber-900/10 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                                        <div className="px-4 py-3 border-b border-gray-100 bg-emerald-50/40">
-                                            <p className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider">
-                                                Signed in as
-                                            </p>
-                                            <p className="text-xs font-bold text-emerald-950 truncate">
-                                                {user.email}
-                                            </p>
-                                            {user.whatsappNumber && (
-                                                <p className="text-[11px] text-emerald-800/70 mt-0.5">
-                                                    {user.whatsappNumber}
+                                    <>
+                                        {/* Backdrop to dismiss menu */}
+                                        <div
+                                            className="fixed inset-0 z-40"
+                                            onClick={() => setIsProfileOpen(false)}
+                                        />
+                                        <div className="absolute right-0 mt-2 w-64 bg-white text-gray-900 rounded-2xl shadow-xl border border-amber-900/10 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                                            <div className="px-4 py-3 border-b border-gray-100 bg-emerald-50/40">
+                                                <p className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider">
+                                                    Signed in as
                                                 </p>
-                                            )}
-                                        </div>
+                                                <p className="text-xs font-bold text-emerald-950 truncate">
+                                                    {user.email}
+                                                </p>
+                                                {user.whatsappNumber && (
+                                                    <p className="text-[11px] text-emerald-800/70 mt-0.5">
+                                                        {user.whatsappNumber}
+                                                    </p>
+                                                )}
+                                            </div>
 
-                                        <div className="py-1">
-                                            <Link
-                                                href="/profile"
-                                                onClick={() => setIsProfileOpen(false)}
-                                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-gray-700 hover:bg-emerald-50 hover:text-emerald-950 transition"
-                                            >
-                                                <User className="w-4 h-4 text-emerald-800" />
-                                                <span>Account Profile</span>
-                                            </Link>
+                                            <div className="py-1">
+                                                <button
+                                                    onClick={handleLogout}
+                                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-rose-600 hover:bg-rose-50 transition cursor-pointer text-left"
+                                                >
+                                                    <LogOut className="w-4 h-4" />
+                                                    <span>Sign Out</span>
+                                                </button>
+                                            </div>
                                         </div>
-
-                                        <div className="border-t border-gray-100 pt-1">
-                                            <button
-                                                onClick={() => {
-                                                    setIsProfileOpen(false);
-                                                    logoutUser()
-                                                    alert("Logging out...");
-                                                }}
-                                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                                            >
-                                                <LogOut className="w-4 h-4" />
-                                                <span>Sign Out</span>
-                                            </button>
-                                        </div>
-                                    </div>
+                                    </>
                                 )}
                             </div>
                         ) : (
@@ -219,11 +212,15 @@ const Navbar = () => {
                     {user && (
                         <div className="p-3 rounded-xl bg-emerald-900/5 border border-emerald-900/10 flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-emerald-950 text-amber-400 flex items-center justify-center font-bold text-base shadow-sm">
-                                {user.name.charAt(0)}
+                                {user.name.charAt(0).toUpperCase()}
                             </div>
-                            <div className="text-left">
-                                <p className="text-sm font-bold text-emerald-950">{user.name}</p>
-                                <p className="text-xs text-emerald-800/80">{user.email}</p>
+                            <div className="text-left leading-tight min-w-0">
+                                <p className="text-xs font-bold text-emerald-950 truncate">
+                                    {user.name}
+                                </p>
+                                <span className="text-[10px] font-semibold tracking-wider text-amber-600 uppercase block truncate">
+                                    {user.role}
+                                </span>
                             </div>
                         </div>
                     )}
@@ -254,10 +251,7 @@ const Navbar = () => {
                     {user ? (
                         <div className="pt-2 border-t border-amber-900/10 space-y-2">
                             <button
-                                onClick={() => {
-                                    setIsMobileMenuOpen(false);
-                                    alert("Logging out...");
-                                }}
+                                onClick={handleLogout}
                                 className="w-full flex items-center justify-center gap-2 py-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold uppercase tracking-wider rounded-xl hover:bg-rose-100 transition"
                             >
                                 <LogOut className="w-4 h-4" />
