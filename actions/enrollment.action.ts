@@ -97,7 +97,7 @@ export async function getTutorStudents(userId: string) {
     if (!tutor) return { success: false, students: [] };
 
     // Fetch active schedules and populate student/user details
-    const schedules = await Schedule.find({ tutor: tutor._id, status: "active" })
+    const schedules = await Schedule.find({ tutor: tutor._id })
         .populate({
             path: "students",
             populate: { path: "user", select: "name email image" },

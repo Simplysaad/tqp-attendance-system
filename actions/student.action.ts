@@ -48,7 +48,7 @@ export async function completeStudentOnboarding(data: CompleteStudentOnboardingI
             status: "active",
         });
 
-        console.log("newStudent", newStudent.populate("user"))
+        // // console.log("newStudent", newStudent.populate("user"))
 
         revalidatePath("/dashboard");
         return { success: true, studentId: newStudent._id.toString() };

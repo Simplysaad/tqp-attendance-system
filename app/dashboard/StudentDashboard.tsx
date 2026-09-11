@@ -21,7 +21,7 @@ export default async function StudentDashboard({ userId }: StudentDashboardProps
 
     // 1. Fetch student profile
     const student = await Student.findOne({ user: userId }).lean();
-    console.log("Student", student)
+    // // console.log("Student", student)
 
     if (!student) {
         return (
@@ -50,7 +50,7 @@ export default async function StudentDashboard({ userId }: StudentDashboardProps
         .populate({ path: "tutor", populate: { path: "user", select: "name" } })
         .lean();
 
-    console.log("recentSessions", recentSessions)
+    // // console.log("recentSessions", recentSessions)
 
     const todaySession = recentSessions[0];
 

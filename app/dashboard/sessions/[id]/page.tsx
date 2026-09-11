@@ -45,10 +45,10 @@ export default async function SessionDetailPage({ params }: SessionPageProps) {
     const tutorId = isAssignedTutor && session.tutor?._id
 
 
-    console.log("session", session)
-    console.log("userId", userId)
-    console.log("isAssignedStudent", isAssignedStudent)
-    console.log("isAssignedTutor", isAssignedTutor)
+    // // console.log("session", session)
+    // // console.log("userId", userId)
+    // // console.log("isAssignedStudent", isAssignedStudent)
+    // // console.log("isAssignedTutor", isAssignedTutor)
 
 
     if (!isAssignedStudent && !isAssignedTutor) {

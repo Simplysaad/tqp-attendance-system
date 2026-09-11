@@ -1,110 +1,16 @@
-
-Auth
-* user registers
-* user selects role (student or tutor)
-* user submits information related to their roles
-* 
-
-Student Flow 
-
-* student logins 
-* checks for scheduled classes 
-* click on a google meet pseudo link
-* this triggers the system to log attendance(student clicked that link therefore, they started the class)
-* after they leave the meeting, the system logs the time of leaving (because it is connected to google meet api)
-* an email is sent to the student to log their progress (has to be very short).
-
-
-Tutor 
-
-* Tutor logins 
-* Checks for scheduled classes 
-* Clicks on the pseudo link 
-* this activates the pseudo link for the student
-* after the meeting, the pseudo link deactivates 
-* the tutor is sent an email to verify the students attendace and log their performance 
-* so both tutors and students will edit the session 
+TODO
+* start working on the email notifications, using nodemailer
 * 
 
 
-PROGRESS:
-- I have completed the database design
-- I have written and tested some actions for basic operations for user collection
-- 
 
+### 🔴 Phase 4: Coordinator & Admin System (Started)
+- [x] Admin Command Center overview (`/admin`) with platform KPIs (Total Students, Total Tutors, Live Classes)[cite: 1].
+- [ ] Single & Bulk Student Assignment actions (`assignSingleStudent`, `assignBulkStudents`).
+- [ ] Unassigned student queue management.
+- [ ] Automated status detection engine (🟢 On Track, 🟡 At Risk, 🔴 Inactive based on attendance thresholds)[cite: 1].
 
-ISSUES:
-* Vague error messages 
-* Unnecessary window.alert() everywhere
-
-
-
-## 🟢 Completed Tasks
-
-* [x] **Database Architecture & Schema Design**
-* Designed database models supporting users, roles (Student, Tutor, Coordinator), schedules, sessions, and progress tracking.
-
-
-* [x] **User Management (Basic Operations)**
-* Authored and verified basic action functions/CRUD operations for the user collection.
-
-### 1. Authentication & Onboarding Flow - done
-* [x] Implement multi-role authentication (Student, Tutor, Coordinator).
-* [x] Build role-specific registration and profile completion forms:
-* **Student:** Current memorisation level, semester goal, availability, preferred class frequency.
-* **Tutor:** Capacity, availability, gender preferences, expertise level.
-* [ ] Implement role-based access control (RBAC) across API routes and client views.
-
-### 2. Pseudo-Link & Google Meet Integration
-
-* [x] Build the **Pseudo Link Service**:
-* [x] Dynamically generate unique pseudo links for scheduled classes.
-* [x] State logic: Disabled until Tutor clicks $\rightarrow$ Active for Student $\rightarrow$ Inactive after session ends.
-* [ ] Integrate **Google Meet & Calendar API**:
-* Fetch join/leave events via Google Meet API to log real-time attendance and duration metrics.
-* [ ] Trigger post-meeting workflow: Auto-deactivate pseudo link upon class completion.
-
-### 3. Session & Attendance Logging Framework
-
-* [ ] Build post-class transactional actions for dual verification:
-* **Student Input:** Quick progress submission (pages memorized/revised).
-* **Tutor Input:** Attendance confirmation, progress verification, quality score, and session notes.
-
-* [ ] Build automated post-class email triggers prompting both Student and Tutor to log session feedback.
-
-### 4. Dashboards & Interface Views
-
-* [ ] **Student Dashboard:**
-* Active semester goal vs. actual progress tracker (with visual progress bar).
-* Upcoming class schedules with active/inactive pseudo link triggers.
-* Historical session attendance and performance metrics.
-
-
-* [ ] **Tutor Dashboard:**
-* Assigned student roster and individual progress overviews.
-* Schedule viewer with class activation actions.
-* Fast-logging interface for post-class reviews.
-
-
-* [ ] **Coordinator Dashboard:**
-* Global metrics: Total active, at-risk, and inactive students.
-* Manual tutor-student assignment and capacity distribution tools.
-* Automated early-warning status badges (🟢 On track, 🟡 At risk, 🔴 Inactive).
-* Change-request management queue (schedule adjustments, tutor changes).
-
-
-
-### 5. Automated Reminders & Early-Warning Engine
-
-* [ ] Pre-class notifications (e.g., 30-minute automated reminders).
-* [ ] Weekly progress aggregator: Cron job to generate and email weekly summaries.
-* [ ] Inactivity detection logic: Flags students as *At Risk* or *Inactive* based on missed sessions or stagnant progress logs.
-
----
-
-## 🔴 Future Enhancements (Post-MVP)
-
-* [ ] AI-assisted Qur'an recitation feedback and assessment.
-* [ ] Advanced gamification, badges, and opt-in progress leaderboards.
-* [ ] Dedicated native mobile application (iOS / Android).
-* [ ] In-platform messaging and announcements system.
+### 🔴 Phase 5: Notifications & Polish (Pending)
+- [ ] Pre-class and post-session automated reminders[cite: 1].
+- [ ] Toast notifications and loading skeleton screens across all flows.
+- [ ] End-to-end user testing (Student onboarding ➔ Tutor logging ➔ Admin distribution).

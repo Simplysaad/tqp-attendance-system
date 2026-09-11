@@ -32,7 +32,7 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
         .sort({ dayOfWeek: 1, startTime: 1 })
         .lean<IScheduleDocument[]>({ virtuals: true });
 
-    // console.log("schedules", schedules)
+    // // // console.log("schedules", schedules)
 
     const rawSessions = await Session.find({ tutor: tutor._id }).lean()
     const sessions = JSON.parse(JSON.stringify(rawSessions));

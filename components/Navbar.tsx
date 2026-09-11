@@ -39,7 +39,7 @@ const Navbar = () => {
 
         getSession()
             .then((data) => {
-                console.log("data", data)
+                // // console.log("data", data)
                 if (isMounted) {
                     // Ensure data matches UserProfile type or null
                     setUser(data as UserProfile | null);

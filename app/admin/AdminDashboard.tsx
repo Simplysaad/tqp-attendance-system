@@ -76,7 +76,7 @@ export default async function AdminDashboard({ userId }: AdminDashboardProps) {
     ]);
 
 
-    console.log("allSchedules", allSchedules)
+    // // console.log("allSchedules", allSchedules)
     // 2. Identify Unassigned Students Efficiently
     // Extract set of all student ObjectIds assigned to any schedule
     const assignedStudentIds = new Set(

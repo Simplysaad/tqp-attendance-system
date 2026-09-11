@@ -83,7 +83,7 @@ export async function completeTutorOnboarding(data: CompleteTutorOnboardingInput
             isActive: true,
         });
 
-        console.log("newTutor", newTutor.populate("user"))
+        // // console.log("newTutor", newTutor.populate("user"))
 
         revalidatePath("/dashboard");
         return { success: true, tutorId: newTutor._id.toString() };

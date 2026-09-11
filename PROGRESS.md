@@ -50,14 +50,14 @@ The **TQP Platform** is a digital management system designed for the TQP (Tahfiz
   - New Memorization completed (start/end Surah, Juz, Page)[cite: 1].
   - Attendance rate calculations across sessions.
 
-### 🔴 Phase 4: Coordinator & Admin System (Pending - Not Started)
+### 🔴 Phase 4: Coordinator & Admin System (Started)
 - [x] Admin Command Center overview (`/admin`) with platform KPIs (Total Students, Total Tutors, Live Classes)[cite: 1].
 - [ ] Single & Bulk Student Assignment actions (`assignSingleStudent`, `assignBulkStudents`).
 - [ ] Unassigned student queue management.
 - [ ] Automated status detection engine (🟢 On Track, 🟡 At Risk, 🔴 Inactive based on attendance thresholds)[cite: 1].
 
 ### 🔴 Phase 5: Notifications & Polish (Pending)
-- [ ] Pre-class and post-session automated reminders[cite: 1].
+- [ ] Pre-class and post-session automated reminders - using nodemailer.
 - [ ] Toast notifications and loading skeleton screens across all flows.
 - [ ] End-to-end user testing (Student onboarding ➔ Tutor logging ➔ Admin distribution).
 

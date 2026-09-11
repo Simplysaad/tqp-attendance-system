@@ -87,7 +87,7 @@ export async function loginUser(email: string, password: string) {
 
         // Persist session cookie on successful login
         await setUserSessionCookie(sanitizedUser);
-        console.log("loggedIn user", sanitizedUser)
+        // // console.log("loggedIn user", sanitizedUser)
 
         return { success: true, user: sanitizedUser };
     } catch (error: any) {

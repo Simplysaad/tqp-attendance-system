@@ -80,7 +80,7 @@ export default async function EnrollPage({ searchParams }: PageProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {tutors.map((tutor: any) => {
                     const tutorIdStr = tutor._id.toString();
-                    console.log("tutorIdStr", tutorIdStr)
+                    // // console.log("tutorIdStr", tutorIdStr)
                     const tutorSchedules = allSchedules.filter(
                         (s) => s.tutor.toString() === tutorIdStr
                     );
