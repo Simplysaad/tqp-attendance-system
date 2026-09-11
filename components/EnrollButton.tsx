@@ -6,13 +6,13 @@ import { useRouter } from "next/navigation";
 
 interface EnrollButtonProps {
     tutorId: string;
-    isFilled: boolean;
+    isFilled?: boolean;
     isAlreadyEnrolled?: boolean;
 }
 
 export default function EnrollButton({
     tutorId,
-    isFilled,
+    isFilled = false,
     isAlreadyEnrolled = false,
 }: EnrollButtonProps) {
     const [isPending, startTransition] = useTransition();

@@ -345,7 +345,7 @@ export async function activateNearestSchedule() {
     return {
         success: true,
         isActive,
-        scheduleDay: nearestSchedule.dayOfWeek,
+        data: updatedSchedule,
         message: isActive
             ? `Activated schedule for ${nearestSchedule.dayOfWeek}`
             : `Deactivated schedule for ${nearestSchedule.dayOfWeek}`,

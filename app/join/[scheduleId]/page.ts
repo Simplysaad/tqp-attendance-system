@@ -15,7 +15,7 @@ export default async function JoinSessionPage({ params }: JoinPageProps) {
     // 1. Auth check
     const authSession = await getSession();
     if (!authSession || authSession.role !== "student") {
-        redirect("/login");
+        redirect(`/login?next=/join/${scheduleId}`);
     }
 
     await connectDB();

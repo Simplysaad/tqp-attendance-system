@@ -11,12 +11,12 @@ interface SessionPageProps {
 
 export default async function SessionDetailPage({ params }: SessionPageProps) {
     // 1. Authenticate user session
+
+    const { id: sessionId } = await params
     const authSession = await getSession();
     if (!authSession) {
-        redirect("/login");
+        redirect(`/login?next=/dashboard/sessions/${sessionId}`);
     }
-
-    const { id: sessionId } = await params;
 
     // 2. Connect DB and fetch session document
     await connectDB();
