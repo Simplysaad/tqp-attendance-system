@@ -75,7 +75,7 @@ function LoginFormContent() {
                     Welcome Back
                 </h2>
                 <p className="text-xs sm:text-sm text-gray-600">
-                    Enter your credentials to access your portal & schedule.
+                    Enter your credentials to access your portal & Class.
                 </p>
             </div>
 

@@ -6,8 +6,6 @@ export type ScheduleStatus = "active" | "inactive";
 
 export interface ISchedule {
     tutor: Types.ObjectId;
-    students: Types.ObjectId[];
-    maxCapacity?: number;
     dayOfWeek: DayOfWeek;
     startTime: number;
     endTime: number;
@@ -17,6 +15,7 @@ export interface ISchedule {
     googleCalendarId?: string;
     googleEventId?: string;
     status: ScheduleStatus;
+    isOpen: Boolean;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -31,16 +30,6 @@ const scheduleSchema = new Schema<IScheduleDocument, IScheduleModel>(
             ref: "Tutor",
             required: [true, "Tutor reference is required"],
             index: true,
-        },
-        students: [
-            {
-                type: Schema.Types.ObjectId,
-                ref: "Student",
-            },
-        ],
-        maxCapacity: {
-            type: Number,
-            default: 1,
         },
         dayOfWeek: {
             type: String,
@@ -70,6 +59,10 @@ const scheduleSchema = new Schema<IScheduleDocument, IScheduleModel>(
             type: String,
             enum: ["active", "inactive"],
             default: "inactive"
+        },
+        isOpen: {
+            type: Boolean,
+            default: false,
         },
         pseudoLink: {
             type: String,

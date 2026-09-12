@@ -1,10 +1,11 @@
 import connectDB from "@/lib/db";
 import Student from "@/models/student.model";
-import Schedule, { ISchedule } from "@/models/schedule.model";
 import Session from "@/models/session.model";
 import JoinClassButton from "@/components/JoinClassButton";
 import Link from "next/link";
 import { getNearestSchedule } from "@/actions/tutor.action";
+import TutorGroup from "@/models/tutorGroup.model";
+import { isScheduleOpen } from "@/actions/session.action";
 
 interface StudentDashboardProps {
     userId: string;
@@ -32,6 +33,27 @@ export default async function StudentDashboard({ userId }: StudentDashboardProps
         );
     }
 
+
+    /**
+     * Find student's tutorGroup.
+     * check for openSchedules in tutor group (isScheduleOpen)
+     * extract the activeSchedule from the tutorGroup 
+     */
+
+    const tutorGroup = await TutorGroup.findOne({ students: student._id, isActive: true })
+    // if (!tutorGroup) {
+    //     return (
+    //         <div className="p-6 text-center">
+    //             <h2 className="text-xl font-semibold">You have not enrolled in a class yet</h2>
+    //             <p className="text-gray-500">Please Enroll in a class to continue</p>
+    //         </div>
+    //     );
+    // }
+
+
+    let openSchedule: any = tutorGroup?.schedules.find(async (s: any) => await isScheduleOpen(s))
+
+
     let nearestSchedule;
 
     const response = await getNearestSchedule();
@@ -39,12 +61,11 @@ export default async function StudentDashboard({ userId }: StudentDashboardProps
         nearestSchedule = response.data
     }
 
-    const isLinkActive = nearestSchedule?.status === "active";
-    const hasMeetLink = Boolean(nearestSchedule?.googleMeetLink || nearestSchedule?.pseudoLink);
+    const isLinkActive = openSchedule?.isOpen
+    const hasMeetLink = Boolean(openSchedule?.googleMeetLink || openSchedule?.pseudoLink);
 
     // 3. Fetch recent session logs for history feed (Limit 5)
-    // const recentSessions = await Session.find({student: student._id})
-    const recentSessions = await Session.find({})
+    const recentSessions = await Session.find({ student: student._id })
         .sort({ date: -1 })
         .limit(5)
         .populate({ path: "tutor", populate: { path: "user", select: "name" } })
@@ -60,6 +81,7 @@ export default async function StudentDashboard({ userId }: StudentDashboardProps
         student: student._id,
         attendance: "present",
     });
+
     const attendanceRate =
         totalSessionsCount > 0
             ? Math.round((presentSessionsCount / totalSessionsCount) * 100)
@@ -112,8 +134,8 @@ export default async function StudentDashboard({ userId }: StudentDashboardProps
                 <div className="space-y-1">
                     <div className="flex items-center gap-2">
                         <h3 className="font-bold text-gray-900 text-base">
-                            {nearestSchedule
-                                ? `Tutor: ${(nearestSchedule.tutor as any)?.user?.name || "Assigned Ustadh"}`
+                            {tutorGroup
+                                ? `Tutor: ${(tutorGroup.tutor as any)?.user?.name || "Assigned Ustadh"}`
                                 : "No Enrolled Tutor"}
                         </h3>
                         {isLinkActive && (
@@ -131,16 +153,16 @@ export default async function StudentDashboard({ userId }: StudentDashboardProps
                     </p>
                 </div>
 
-                {nearestSchedule ? (
+                {openSchedule ? (
                     <JoinClassButton
-                        link={nearestSchedule.pseudoLink || nearestSchedule.googleMeetLink}
+                        link={`/join/${tutorGroup?._id}`}
                         isLinkActive={isLinkActive}
                         meetLinkAvailable={hasMeetLink}
                     />
                 ) : (
                     <Link
                         className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-semibold shadow-sm transition flex items-center gap-2"
-                        href={"/enroll"}
+                        href={"/enroll?from=student_dashboard&next=/dashboard"}
                     >
                         Enroll Now
                     </Link>
