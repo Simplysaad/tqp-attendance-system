@@ -28,11 +28,9 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
     }
 
     const schedules = await Schedule.find({ tutor: tutor._id })
-        .populate("students", "fullName email")
         .sort({ dayOfWeek: 1, startTime: 1 })
         .lean<IScheduleDocument[]>({ virtuals: true });
 
-    // // // console.log("schedules", schedules)
 
     const rawSessions = await Session.find({ tutor: tutor._id }).lean()
     const sessions = JSON.parse(JSON.stringify(rawSessions));
@@ -68,9 +66,9 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
             {/* Availability Schedule Overview */}
             <div className="border rounded-lg p-5 bg-white shadow-sm space-y-3">
                 <h3 className="font-semibold text-gray-800">Your Weekly Availability Window</h3>
-                {tutor.availability && tutor.availability.length > 0 ? (
+                {schedules && schedules.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                        {tutor.availability.map((slot, idx) => (
+                        {schedules.map((slot, idx) => (
                             <div key={idx} className="p-3 border rounded bg-gray-50 text-sm">
                                 <span className="font-bold capitalize block text-gray-700">{slot.dayOfWeek}</span>
                                 <span className="text-gray-600">
@@ -136,23 +134,23 @@ export default async function TutorDashboard({ userId }: TutorDashboardProps) {
                                         </a>
                                     </div>
                                 )}
-                                {item.pseudoLink && (
+                                {item.googleMeetLink && (
                                     <div className="text-xs truncate">
                                         <span className="text-gray-500">Pseudo Link: </span>
                                         <a
-                                            href={item.pseudoLink}
+                                            href={`${process.env.BASE_URL}/join/${item._id}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-blue-600 underline font-mono hover:text-blue-800"
                                         >
-                                            {item.pseudoLink}
+                                            {`${process.env.BASE_URL}/join/${item._id}`}
                                         </a>
                                     </div>
                                 )}
 
                                 <div className="pt-2 border-t text-xs text-gray-500 flex justify-between items-center">
                                     <span>
-                                        Enrolled: {item.students ? item.students.length : 0} / {item.maxCapacity || 1} student(s)
+                                        {/* Enrolled: {item.students ? item.students.length : 0} / {item.maxCapacity || 1} student(s) */}
                                     </span>
                                 </div>
                             </div>

@@ -4,16 +4,18 @@ export type DayOfWeek = "sunday" | "monday" | "tuesday" | "wednesday" | "thursda
 export type ScheduleMode = "online" | "physical";
 export type ScheduleStatus = "active" | "inactive";
 
+
+
 export interface ISchedule {
     tutor: Types.ObjectId;
     dayOfWeek: DayOfWeek;
     startTime: number;
     endTime: number;
     mode: ScheduleMode;
-    pseudoLink?: string; // Stored field
     googleMeetLink?: string;
     googleCalendarId?: string;
     googleEventId?: string;
+    pseudoLink?: string;
     status: ScheduleStatus;
     isOpen: Boolean;
     createdAt?: Date;
@@ -64,10 +66,6 @@ const scheduleSchema = new Schema<IScheduleDocument, IScheduleModel>(
             type: Boolean,
             default: false,
         },
-        pseudoLink: {
-            type: String,
-            trim: true
-        },
         googleMeetLink: { type: String, trim: true },
         googleCalendarId: { type: String, trim: true },
         googleEventId: { type: String, trim: true },
@@ -89,13 +87,22 @@ scheduleSchema.pre("save", function () {
     }
 
     // Generate pseudoLink if missing or on new document creation
-    if (this.isNew || !this.pseudoLink) {
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BASE_URL || "http://localhost:3000";
-        this.pseudoLink = `${baseUrl}/join/${this._id}`;
-    }
+
 });
 
 
+scheduleSchema.virtual("pseudoLink").get(function () {
+    const baseUrl =
+        process.env.BASE_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        "http://localhost:3000";
+
+    return `${baseUrl}/join/${this._id}`;
+});
+
+// Ensure virtuals are included when converting documents to JSON or Plain Objects
+scheduleSchema.set("toJSON", { virtuals: true });
+scheduleSchema.set("toObject", { virtuals: true });
 
 const DAYS_OF_WEEK: DayOfWeek[] = [
     "sunday",

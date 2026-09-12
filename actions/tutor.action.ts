@@ -7,32 +7,19 @@ import Tutor, { timeToMinutes } from "@/models/tutor.model";
 import Schedule, { DayOfWeek, ScheduleMode, IScheduleDocument, ISchedule } from "@/models/schedule.model";
 import { getSession } from "./user.action";
 import Student from "@/models/student.model";
+import { timeStringToMinutes } from "@/lib/time";
+import TutorGroup from "@/models/tutorGroup.model";
 
-
-
-export interface AvailabilityInput {
-    dayOfWeek: DayOfWeek;
-    startTimeStr: string; // Expected "HH:MM" e.g., "09:00"
-    endTimeStr: string;   // Expected "HH:MM" e.g., "17:00"
-}
 
 export interface CompleteTutorOnboardingInput {
     userId: string;
     gender: "male" | "female";
     maximumStudents?: number;
-    availability: AvailabilityInput[];
+    schedules: CreateScheduleInput[]
 }
 
 
-interface CreateScheduleInput {
-    tutorId?: string; // Optional if coordinator creates it for a tutor
-    dayOfWeek: DayOfWeek;
-    startTime: number; // Minutes from midnight (e.g., 600 = 10:00 AM)
-    endTime: number;   // Minutes from midnight (e.g., 660 = 11:00 AM)
-    mode: ScheduleMode;
-    googleMeetLink?: string;
-    maxCapacity?: number;
-}
+
 
 export interface UpdateScheduleInput {
     scheduleId: string;
@@ -40,12 +27,34 @@ export interface UpdateScheduleInput {
     startTime: number; // in minutes
     endTime: number;   // in minutes
     googleMeetLink?: string;
-    mode?: "online" | "onsite";
+    mode?: "online" | "physical";
+    maxCapacity?: number;
+}
+
+export interface CreateScheduleInput {
+    tutorId?: string;
+    dayOfWeek: DayOfWeek;
+    startTime?: number;
+    endTime?: number;
+    startTimeStr: string;
+    endTimeStr: string;
+    mode?: ScheduleMode;
+    googleMeetLink?: string;
     maxCapacity?: number;
 }
 
 
 export async function completeTutorOnboarding(data: CompleteTutorOnboardingInput) {
+
+
+    /**
+     * Onboarding process
+     * create tutor info : user, gender, 
+     * create tutorGroup: tutorId, rules.maxCapacity, 
+     * create schedules: 
+     * 
+     */
+
     try {
         await connectDB();
 
@@ -57,36 +66,48 @@ export async function completeTutorOnboarding(data: CompleteTutorOnboardingInput
         // Cast userId string to ObjectId for clean Mongoose querying
         const userObjectId = new mongoose.Types.ObjectId(userId);
 
-        const existingTutor = await Tutor.findOne({ user: userObjectId });
-        if (existingTutor) {
-            return { success: false, message: "Tutor profile already exists for this user." };
-        }
+        const tutor = await Tutor.findOneAndUpdate(
+            { user: userObjectId },
+            {
+                $setOnInsert: {
+                    user: userObjectId,
+                    gender: data.gender,
+                    maximumStudents: data.maximumStudents,
+                },
+            },
+            {
+                upsert: true,
+                new: true,
+                setDefaultsOnInsert: true,
+            }
+        );
 
-        // Convert string times ("HH:MM") to minute values (0 - 1439) required by schema
-        const formattedAvailability = data.availability.map((item) => {
-            const startTime = timeToMinutes(item.startTimeStr);
-            const endTime = timeToMinutes(item.endTimeStr);
+        // Now create schedules 
+        const formattedSchedules = data.schedules.map((schedule) => ({
+            ...schedule,
+            tutor: tutor._id,
+            startTime: timeStringToMinutes(schedule.startTimeStr),
+            endTime: timeStringToMinutes(schedule.endTimeStr),
+        }));
 
-            return {
-                dayOfWeek: item.dayOfWeek.toLowerCase() as DayOfWeek,
-                startTime,
-                endTime,
-                isActive: true,
-            };
-        });
+        const createdSchedules = await Schedule.insertMany(formattedSchedules)
 
-        const newTutor = await Tutor.create({
-            user: userObjectId,
-            gender: data.gender,
-            maximumStudents: data.maximumStudents ? Number(data.maximumStudents) : 5,
-            availability: formattedAvailability,
-            isActive: true,
-        });
+        // Create TutorGroup
 
-        // // console.log("newTutor", newTutor.populate("user"))
+        let schedules = createdSchedules.map((s) => s._id)
+
+        const tutorGroup = await TutorGroup.create({
+            tutor: tutor._id,
+            schedules,
+            rules: {
+                femaleOnly: data.gender === "female",
+                maxCapacity: data.maximumStudents,
+            }
+        })
+
 
         revalidatePath("/dashboard");
-        return { success: true, tutorId: newTutor._id.toString() };
+        return { success: true, tutorId: tutor._id.toString() };
     } catch (error: any) {
         return { success: false, message: error.message || "Failed to create tutor profile." };
     }
@@ -94,30 +115,37 @@ export async function completeTutorOnboarding(data: CompleteTutorOnboardingInput
 
 
 export async function createSchedule(data: CreateScheduleInput) {
-    const session = await getSession();
+    const authSession = await getSession();
 
-    if (!session) {
+    if (!authSession) {
         return { success: false, error: "Unauthorized" };
+    }
+
+    if (data.startTimeStr && data.endTimeStr) {
+        data.startTime = timeStringToMinutes(data.startTimeStr);
+        data.endTime = timeStringToMinutes(data.endTimeStr);
     }
 
     await connectDB();
 
     // Identify the target tutor
-    let targetTutorId = data.tutorId;
+    let tutorId = data.tutorId;
 
-    if (session.role === "tutor") {
-        const tutor = await Tutor.findOne({ user: session.id });
-        if (!tutor) return { success: false, error: "Tutor profile not found" };
-        targetTutorId = tutor._id.toString();
+
+    if (authSession.role !== "tutor") {
+        return { success: false, error: "Insufficient role to create schedule" };
     }
 
-    if (!targetTutorId) {
-        return { success: false, error: "Tutor ID is required" };
-    }
+
+    const tutor = await Tutor.findOne({ user: authSession.id });
+    if (!tutor) return { success: false, error: "Tutor profile not found" };
+
+    tutorId = tutor._id.toString();
+
 
     // 1. Prevent Overlapping Slots for the Same Tutor on the Same Day
     const existingOverlap = await Schedule.findOne({
-        tutor: targetTutorId,
+        tutor: tutorId,
         dayOfWeek: data.dayOfWeek,
         status: "active",
         $or: [
@@ -136,13 +164,12 @@ export async function createSchedule(data: CreateScheduleInput) {
 
     // 2. Create and Save Schedule
     const newSchedule = await Schedule.create({
-        tutor: targetTutorId,
+        tutor: tutorId,
         dayOfWeek: data.dayOfWeek,
         startTime: data.startTime,
         endTime: data.endTime,
         mode: data.mode || "online",
         googleMeetLink: data.googleMeetLink,
-        maxCapacity: data.maxCapacity || 1,
         status: "active",
     });
 
@@ -209,7 +236,6 @@ export async function updateSchedule(data: UpdateScheduleInput) {
             endTime: data.endTime,
             mode: data.mode || existingSchedule.mode || "online",
             googleMeetLink: data.googleMeetLink ?? existingSchedule.googleMeetLink,
-            maxCapacity: data.maxCapacity ?? existingSchedule.maxCapacity ?? 1,
         },
         { new: true }
     );

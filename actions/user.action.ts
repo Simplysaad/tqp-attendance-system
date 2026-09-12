@@ -35,7 +35,8 @@ async function setUserSessionCookie(user: Record<string, any>) {
 // 1. Register User Action
 export async function registerUser(formData: IUser) {
     try {
-        await connectDB();
+        let conn = await connectDB();
+        console.log("conn", conn)
 
         if (!formData.password) {
             return { success: false, error: "Error registering user, empty password" };

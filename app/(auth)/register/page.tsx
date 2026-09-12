@@ -56,6 +56,8 @@ function RegisterForm() {
         e.preventDefault();
         setLoading(true);
 
+        console.log("formData", formData)
+
         try {
             const response = await registerUser(formData);
 

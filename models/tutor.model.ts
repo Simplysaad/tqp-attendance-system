@@ -125,12 +125,12 @@ const tutorSchema = new Schema<ITutorDocument, ITutorModel>(
             },
             required: [true, "Gender is required"],
         },
-        maximumStudents: {
-            type: Number,
-            required: [true, "Maximum students capacity is required"],
-            min: [3, "Maximum students must be at least 3"],
-            default: 5,
-        },
+        // maximumStudents: {
+        //     type: Number,
+        //     required: [true, "Maximum students capacity is required"],
+        //     min: [3, "Maximum students must be at least 3"],
+        //     default: 5,
+        // },
         isActive: {
             type: Boolean,
             default: true,
