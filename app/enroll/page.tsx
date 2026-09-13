@@ -22,15 +22,15 @@ export default async function EnrollPage({ searchParams }: PageProps) {
     const { tutor_id, error, message } = await searchParams;
 
     await connectDB();
-    const authSession = await getSession();
+    const currentUser = await getSession();
 
     // 1. Authentication Check
-    if (!authSession) {
+    if (!currentUser) {
         const nextUrl = tutor_id ? `/enroll?tutor_id=${tutor_id}` : "/enroll";
         redirect(`/login?next=${encodeURIComponent(nextUrl)}`);
     }
 
-    if (authSession.role !== "student") {
+    if (currentUser.role !== "student") {
         redirect("/dashboard");
     }
 
@@ -49,8 +49,8 @@ export default async function EnrollPage({ searchParams }: PageProps) {
 
     // 3. Fallback: Render Tutor Selection UI when no tutor_id is provided
     let currentStudentId: string | null = null;
-    if (authSession?.role === "student") {
-        const student = await Student.findOne({ user: authSession.id }).lean();
+    if (currentUser?.role === "student") {
+        const student = await Student.findOne({ user: currentUser.id }).lean();
         if (student) currentStudentId = student._id.toString();
     }
 

@@ -7,14 +7,14 @@ interface EnrollProps {
 }
 
 export default async function EnrollDirect({ params }: EnrollProps) {
-    const authSession = await getSession();
+    const currentUser = await getSession();
     const { tutorId } = await params;
 
-    if (!authSession) {
+    if (!currentUser) {
         redirect(`/login?next=/enroll/${tutorId}`);
     }
 
-    if (authSession.role !== 'student') {
+    if (currentUser.role !== 'student') {
         redirect('/dashboard');
     }
 

@@ -13,8 +13,8 @@ export default async function SessionDetailPage({ params }: SessionPageProps) {
     // 1. Authenticate user session
 
     const { id: sessionId } = await params
-    const authSession = await getSession();
-    if (!authSession) {
+    const currentUser = await getSession();
+    if (!currentUser) {
         redirect(`/login?next=/dashboard/sessions/${sessionId}`);
     }
 
@@ -33,9 +33,9 @@ export default async function SessionDetailPage({ params }: SessionPageProps) {
     // Convert Mongoose document to plain JS object for Client Components
     const session = JSON.parse(JSON.stringify(sessionDoc));
 
-    const userId = authSession.id;
+    const userId = currentUser.id;
 
-    const userRole = authSession.role;
+    const userRole = currentUser.role;
     // 3. Authorization Check (Permission Guard)
     const isAssignedStudent = userRole === "student" && session.student?.user?.toString() === userId;
     const isAssignedTutor = userRole === "tutor" && session.tutor?.user?.toString() === userId;

@@ -115,9 +115,9 @@ export async function completeTutorOnboarding(data: CompleteTutorOnboardingInput
 
 
 export async function createSchedule(data: CreateScheduleInput) {
-    const authSession = await getSession();
+    const currentUser = await getSession();
 
-    if (!authSession) {
+    if (!currentUser) {
         return { success: false, error: "Unauthorized" };
     }
 
@@ -132,12 +132,12 @@ export async function createSchedule(data: CreateScheduleInput) {
     let tutorId = data.tutorId;
 
 
-    if (authSession.role !== "tutor") {
+    if (currentUser.role !== "tutor") {
         return { success: false, error: "Insufficient role to create schedule" };
     }
 
 
-    const tutor = await Tutor.findOne({ user: authSession.id });
+    const tutor = await Tutor.findOne({ user: currentUser.id });
     if (!tutor) return { success: false, error: "Tutor profile not found" };
 
     tutorId = tutor._id.toString();
@@ -258,9 +258,9 @@ const DAYS_ORDER: DayOfWeek[] = [
 export async function getNearestSchedule(): Promise<
     { success: true; data: IScheduleDocument } | { success: false; error: string }
 > {
-    const authSession = await getSession();
+    const currentUser = await getSession();
 
-    if (!authSession) {
+    if (!currentUser) {
         return { success: false, error: "Unauthorized access" };
     }
 
@@ -268,9 +268,9 @@ export async function getNearestSchedule(): Promise<
 
     let schedules: IScheduleDocument[] = [];
 
-    if (authSession.role === "tutor") {
+    if (currentUser.role === "tutor") {
         // 1. Fetch Tutor Profile
-        const tutor = await Tutor.findOne({ user: authSession.id }).lean();
+        const tutor = await Tutor.findOne({ user: currentUser.id }).lean();
         if (!tutor) {
             return { success: false, error: "Tutor profile not found" };
         }
@@ -284,7 +284,7 @@ export async function getNearestSchedule(): Promise<
             .lean<IScheduleDocument[]>();
     } else {
         // 3. Fetch Student Profile first to get the Student _id
-        const student = await Student.findOne({ user: authSession.id || authSession.userId }).lean();
+        const student = await Student.findOne({ user: currentUser.id || currentUser.userId }).lean();
         if (!student) {
             return { success: false, error: "Student profile not found" };
         }

@@ -10,6 +10,7 @@ export interface IUser {
     whatsappNumber: string;
     password?: string;
     role: UserRole;
+    isOnboarded: boolean;
     isActive: boolean;
     lastLoginAt?: Date;
     createdAt?: Date;
@@ -65,6 +66,11 @@ const userSchema = new Schema<IUserDocument, IUserModel, IUserMethods>(
                 message: "{VALUE} is not a valid role",
             },
             default: "student",
+        },
+        isOnboarded: {
+            type: Boolean,
+            default: false,
+            index: true,
         },
         isActive: {
             type: Boolean,

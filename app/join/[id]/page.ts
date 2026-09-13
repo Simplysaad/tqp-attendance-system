@@ -12,15 +12,15 @@ export default async function JoinPage({ params }: JoinPageProps) {
     const { id: tutorGroupId } = await params;
 
     // 1. Auth check
-    const authSession = await getSession();
-    if (!authSession || authSession.role !== "student") {
+    const currentUser = await getSession();
+    if (!currentUser || currentUser.role !== "student") {
         redirect(`/login?next=/join/${tutorGroupId}`);
     }
 
     await connectDB();
 
-    // 2. Fetch Student by linked user ID (authSession.id or authSession._id)
-    const userId = authSession.id || authSession._id;
+    // 2. Fetch Student by linked user ID (currentUser.id or currentUser._id)
+    const userId = currentUser.id || currentUser._id;
     const student = await Student.findOne({ user: userId });
 
     if (!student) {

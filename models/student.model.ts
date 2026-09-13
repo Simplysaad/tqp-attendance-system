@@ -5,7 +5,7 @@ export type Gender = "male" | "female";
 export type StudentStatus = "active" | "at risk" | "inactive";
 
 // Sub-document Interface
-export interface ICurrentMemorization {
+export interface IMemorization {
     surah?: string;
     aayah?: number;
     juz?: number;
@@ -20,7 +20,7 @@ export interface IStudent {
     faculty?: string;
     department?: string;
     level?: number;
-    currentMemorization?: ICurrentMemorization;
+    currentMemorization?: IMemorization;
     status: StudentStatus;
     tutor: Types.ObjectId;
     createdAt?: Date;

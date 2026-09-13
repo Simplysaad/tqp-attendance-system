@@ -12,9 +12,9 @@ import TutorGroup from "@/models/tutorGroup.model";
 
 export async function enrollWithTutor(tutorId: string) {
     try {
-        const authSession = await getSession();
+        const currentUser = await getSession();
 
-        if (!authSession) {
+        if (!currentUser) {
             return {
                 success: false,
                 error: "UNAUTHENTICATED",
@@ -22,7 +22,7 @@ export async function enrollWithTutor(tutorId: string) {
             };
         }
 
-        if (authSession.role !== "student") {
+        if (currentUser.role !== "student") {
             return { success: false, error: "Only students can enroll with a tutor." };
         }
 
@@ -33,7 +33,7 @@ export async function enrollWithTutor(tutorId: string) {
         await connectDB();
 
         // 1. Fetch Student profile
-        const student = await Student.findOne({ user: authSession.id });
+        const student = await Student.findOne({ user: currentUser.id });
         if (!student) {
             return { success: false, error: "Student profile not found." };
         }

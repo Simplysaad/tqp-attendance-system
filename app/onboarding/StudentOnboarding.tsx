@@ -5,19 +5,18 @@ import { useRouter } from "next/navigation";
 import { completeStudentOnboarding } from "@/actions/student.action";
 import SearchableSelect from "@/components/SearchableSelect";
 import { QURAN_SURAHS } from "@/lib/surah";
+import { IMemorization } from "@/models/student.model";
 
-interface FormState {
+
+
+export interface FormState {
     gender: "male" | "female" | "";
     matricNumber: string;
     faculty: string;
     department: string;
     level: string | number;
-    currentMemorization: {
-        surah: string;
-        aayah: string | number;
-        juz: string | number;
-        page: string | number;
-    };
+    currentMemorization: IMemorization
+    expectedMemorization: IMemorization
 }
 
 export default function StudentOnboardingForm({ userId }: { userId: string }) {
@@ -34,9 +33,15 @@ export default function StudentOnboardingForm({ userId }: { userId: string }) {
         level: "",
         currentMemorization: {
             surah: "",
-            aayah: "",
-            juz: "",
-            page: "",
+            aayah: 0,
+            juz: 0,
+            page: 0,
+        },
+        expectedMemorization: {
+            surah: "",
+            aayah: 0,
+            juz: 0,
+            page: 0,
         },
     });
 
@@ -61,6 +66,15 @@ export default function StudentOnboardingForm({ userId }: { userId: string }) {
             },
         }));
     };
+    const handleGoalChange = (name: string, value: string) => {
+        setFormData((prev) => ({
+            ...prev,
+            expectedMemorization: {
+                ...prev.expectedMemorization,
+                [name]: value,
+            },
+        }));
+    };
 
     // Direct change handler for custom components like SearchableSelect
     const handleSelectChange = (fieldName: keyof FormState, value: string) => {
@@ -73,7 +87,6 @@ export default function StudentOnboardingForm({ userId }: { userId: string }) {
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setError(null);
-
 
         if (!formData.faculty) {
             setError("Please select a faculty.");
@@ -93,6 +106,18 @@ export default function StudentOnboardingForm({ userId }: { userId: string }) {
             department: formData.department,
             level: formData.level ? Number(formData.level) : undefined,
             currentMemorization: {
+                surah: formData.currentMemorization.surah,
+                aayah: formData.currentMemorization.aayah
+                    ? Number(formData.currentMemorization.aayah)
+                    : undefined,
+                juz: formData.currentMemorization.juz
+                    ? Number(formData.currentMemorization.juz)
+                    : undefined,
+                page: formData.currentMemorization.page
+                    ? Number(formData.currentMemorization.page)
+                    : undefined,
+            },
+            expectedMemorization: {
                 surah: formData.currentMemorization.surah,
                 aayah: formData.currentMemorization.aayah
                     ? Number(formData.currentMemorization.aayah)
@@ -275,6 +300,74 @@ export default function StudentOnboardingForm({ userId }: { userId: string }) {
                                 name="page"
                                 value={formData.currentMemorization.page}
                                 onChange={(e) => handleMemorizationChange(e.target.name, e.target.value)}
+                                required
+                                placeholder="Page"
+                                min={1}
+                                max={604}
+                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Goal Memorization Container */}
+                <div className="p-4 border border-emerald-900/15 rounded-xl bg-emerald-50/50 space-y-3">
+                    <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
+                        Memorization Goal
+                    </h3>
+
+                    <div>
+                        <SearchableSelect
+                            required
+                            placeholder="Current Surah *"
+                            name="surah"
+                            value={formData.expectedMemorization.surah}
+                            options={QURAN_SURAHS.map((surah) => surah.name)}
+                            onChange={(val: string) => handleGoalChange("surah", val)}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                        <div>
+                            <label className="block text-[10px] font-medium text-gray-500 mb-0.5">
+                                Aayah *
+                            </label>
+                            <input
+                                type="number"
+                                name="aayah"
+                                value={formData.expectedMemorization.aayah}
+                                onChange={(e) => handleGoalChange(e.target.name, e.target.value)}
+                                required
+                                placeholder="e.g. 255"
+                                min={1}
+                                max={QURAN_SURAHS.find((surah) => surah.name === formData.expectedMemorization.surah)?.totalAayahs}
+                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-medium text-gray-500 mb-0.5">
+                                Juz (1-30)
+                            </label>
+                            <input
+                                type="number"
+                                name="juz"
+                                value={formData.expectedMemorization.juz}
+                                onChange={(e) => handleGoalChange(e.target.name, e.target.value)}
+                                placeholder="Juz"
+                                min={1}
+                                max={30}
+                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-medium text-gray-500 mb-0.5">
+                                Page * (1-604)
+                            </label>
+                            <input
+                                type="number"
+                                name="page"
+                                value={formData.expectedMemorization.page}
+                                onChange={(e) => handleGoalChange(e.target.name, e.target.value)}
                                 required
                                 placeholder="Page"
                                 min={1}
