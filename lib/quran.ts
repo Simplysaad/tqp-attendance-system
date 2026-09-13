@@ -164,3 +164,28 @@ export async function getAayahInfo({
     }
     return getVerseByKey(`${match.number}:${aayah}`);
 }
+
+export interface MemorizationPosition {
+    surah: string;
+    aayah: number;
+    juz?: number;
+    page?: number;
+}
+
+/**
+ * Resolve the authoritative juz + page for a surah name + aayah number from the
+ * QF Content API, returning a position object ready to persist on a student/goal
+ * record. (v4 verse objects include `juz_number` and `page_number` by default.)
+ */
+export async function getMemorizationPosition(
+    surah: string,
+    aayah: number
+): Promise<MemorizationPosition> {
+    const verse = await getAayahInfo({ surah, aayah });
+    return {
+        surah,
+        aayah,
+        juz: verse?.juz_number,
+        page: verse?.page_number,
+    };
+}

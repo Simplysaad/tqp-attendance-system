@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { completeStudentOnboarding } from "@/actions/student.action";
+import {
+    completeStudentOnboarding,
+    lookupMemorizationPosition,
+} from "@/actions/student.action";
 import SearchableSelect from "@/components/SearchableSelect";
 import { QURAN_SURAHS } from "@/lib/surah";
 import { IMemorization } from "@/models/student.model";
-
-
 
 export interface FormState {
     gender: "male" | "female" | "";
@@ -15,8 +16,46 @@ export interface FormState {
     faculty: string;
     department: string;
     level: string | number;
-    currentMemorization: IMemorization
-    expectedMemorization: IMemorization
+    currentMemorization: IMemorization;
+    expectedMemorization: IMemorization;
+}
+
+// Custom hook to handle auto-lookup for Juz and Page numbers
+function useMemorizationLookup(
+    memorization: IMemorization,
+    onUpdate: (juz: number, page: number) => void
+) {
+    const [isLookingUp, setIsLookingUp] = useState(false);
+    const { surah, aayah: aayahRaw } = memorization;
+
+    useEffect(() => {
+        const aayah = Number(aayahRaw);
+        const meta = QURAN_SURAHS.find((s) => s.name === surah);
+
+        if (!surah || !meta || !aayah || aayah < 1 || aayah > meta.totalAayahs) {
+            setIsLookingUp(false);
+            onUpdate(0, 0);
+            return;
+        }
+
+        setIsLookingUp(true);
+        const timer = setTimeout(async () => {
+            try {
+                const res = await lookupMemorizationPosition(surah, aayah);
+                if (res?.success) {
+                    onUpdate(res.juz ?? 0, res.page ?? 0);
+                }
+            } catch (err) {
+                console.error("Failed to lookup verse details:", err);
+            } finally {
+                setIsLookingUp(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [surah, aayahRaw]);
+
+    return isLookingUp;
 }
 
 export default function StudentOnboardingForm({ userId }: { userId: string }) {
@@ -24,63 +63,58 @@ export default function StudentOnboardingForm({ userId }: { userId: string }) {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
-    // Controlled form state matching your payload structure
     const [formData, setFormData] = useState<FormState>({
         gender: "",
         matricNumber: "",
         faculty: "",
         department: "",
         level: "",
-        currentMemorization: {
-            surah: "",
-            aayah: 0,
-            juz: 0,
-            page: 0,
-        },
-        expectedMemorization: {
-            surah: "",
-            aayah: 0,
-            juz: 0,
-            page: 0,
-        },
+        currentMemorization: { surah: "", aayah: 0, juz: 0, page: 0 },
+        expectedMemorization: { surah: "", aayah: 0, juz: 0, page: 0 },
     });
 
-    // Universal change handler for flat inputs
+    // Callbacks for updating automatic juz and page fields safely
+    const handleCurrentUpdate = useCallback((juz: number, page: number) => {
+        setFormData((prev) => ({
+            ...prev,
+            currentMemorization: { ...prev.currentMemorization, juz, page },
+        }));
+    }, []);
+
+    const handleGoalUpdate = useCallback((juz: number, page: number) => {
+        setFormData((prev) => ({
+            ...prev,
+            expectedMemorization: { ...prev.expectedMemorization, juz, page },
+        }));
+    }, []);
+
+    const lookingUpCurrent = useMemorizationLookup(
+        formData.currentMemorization,
+        handleCurrentUpdate
+    );
+    const lookingUpExpected = useMemorizationLookup(
+        formData.expectedMemorization,
+        handleGoalUpdate
+    );
+
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    // Change handler for nested memorization inputs
-    const handleMemorizationChange = (name: string, value: string) => {
+    const handleMemorizationChange = (
+        target: "currentMemorization" | "expectedMemorization",
+        name: string,
+        value: string | number
+    ) => {
         setFormData((prev) => ({
             ...prev,
-            currentMemorization: {
-                ...prev.currentMemorization,
+            [target]: {
+                ...prev[target],
                 [name]: value,
             },
-        }));
-    };
-    const handleGoalChange = (name: string, value: string) => {
-        setFormData((prev) => ({
-            ...prev,
-            expectedMemorization: {
-                ...prev.expectedMemorization,
-                [name]: value,
-            },
-        }));
-    };
-
-    // Direct change handler for custom components like SearchableSelect
-    const handleSelectChange = (fieldName: keyof FormState, value: string) => {
-        setFormData((prev) => ({
-            ...prev,
-            [fieldName]: value,
         }));
     };
 
@@ -94,51 +128,57 @@ export default function StudentOnboardingForm({ userId }: { userId: string }) {
         }
 
         if (!formData.currentMemorization.surah) {
-            setError("Please select a Surah.");
+            setError("Please select a Current Surah.");
             return;
         }
 
-        const payload = {
-            userId,
-            gender: formData.gender as "male" | "female",
-            matricNumber: formData.matricNumber,
-            faculty: formData.faculty,
-            department: formData.department,
-            level: formData.level ? Number(formData.level) : undefined,
-            currentMemorization: {
-                surah: formData.currentMemorization.surah,
-                aayah: formData.currentMemorization.aayah
-                    ? Number(formData.currentMemorization.aayah)
-                    : undefined,
-                juz: formData.currentMemorization.juz
-                    ? Number(formData.currentMemorization.juz)
-                    : undefined,
-                page: formData.currentMemorization.page
-                    ? Number(formData.currentMemorization.page)
-                    : undefined,
-            },
-            expectedMemorization: {
-                surah: formData.currentMemorization.surah,
-                aayah: formData.currentMemorization.aayah
-                    ? Number(formData.currentMemorization.aayah)
-                    : undefined,
-                juz: formData.currentMemorization.juz
-                    ? Number(formData.currentMemorization.juz)
-                    : undefined,
-                page: formData.currentMemorization.page
-                    ? Number(formData.currentMemorization.page)
-                    : undefined,
-            },
-        };
-
-        const res = await completeStudentOnboarding(payload);
         setLoading(true);
 
-        if (!res.success) {
-            setError(res.message || "An error occurred");
+        try {
+            const payload = {
+                userId,
+                gender: formData.gender as "male" | "female",
+                matricNumber: formData.matricNumber,
+                faculty: formData.faculty,
+                department: formData.department,
+                level: formData.level ? Number(formData.level) : undefined,
+                currentMemorization: {
+                    surah: formData.currentMemorization.surah,
+                    aayah: formData.currentMemorization.aayah
+                        ? Number(formData.currentMemorization.aayah)
+                        : undefined,
+                    juz: formData.currentMemorization.juz
+                        ? Number(formData.currentMemorization.juz)
+                        : undefined,
+                    page: formData.currentMemorization.page
+                        ? Number(formData.currentMemorization.page)
+                        : undefined,
+                },
+                expectedMemorization: {
+                    surah: formData.expectedMemorization.surah,
+                    aayah: formData.expectedMemorization.aayah
+                        ? Number(formData.expectedMemorization.aayah)
+                        : undefined,
+                    juz: formData.expectedMemorization.juz
+                        ? Number(formData.expectedMemorization.juz)
+                        : undefined,
+                    page: formData.expectedMemorization.page
+                        ? Number(formData.expectedMemorization.page)
+                        : undefined,
+                },
+            };
+
+            const res = await completeStudentOnboarding(payload);
+
+            if (!res.success) {
+                setError(res.message || "An error occurred during onboarding.");
+                setLoading(false);
+            } else {
+                router.push("/dashboard");
+            }
+        } catch (err: any) {
+            setError(err.message || "An unexpected error occurred.");
             setLoading(false);
-        } else {
-            router.push("/dashboard");
         }
     }
 
@@ -203,8 +243,16 @@ export default function StudentOnboardingForm({ userId }: { userId: string }) {
                             required
                             name="faculty"
                             value={formData.faculty}
-                            onChange={(val: string) => handleSelectChange("faculty", val)}
-                            options={["tech", "science", "arts", "administration", "social sciences"]}
+                            onChange={(val: string) =>
+                                setFormData((prev) => ({ ...prev, faculty: val }))
+                            }
+                            options={[
+                                "tech",
+                                "science",
+                                "arts",
+                                "administration",
+                                "social sciences",
+                            ]}
                         />
                     </div>
 
@@ -242,22 +290,22 @@ export default function StudentOnboardingForm({ userId }: { userId: string }) {
                     />
                 </div>
 
-                {/* Current Memorization Container */}
+                {/* Current Memorization Section */}
                 <div className="p-4 border border-emerald-900/15 rounded-xl bg-emerald-50/50 space-y-3">
                     <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
                         Current Memorization Status
                     </h3>
 
-                    <div>
-                        <SearchableSelect
-                            required
-                            placeholder="Current Surah *"
-                            name="surah"
-                            value={formData.currentMemorization.surah}
-                            options={QURAN_SURAHS.map((surah) => surah.name)}
-                            onChange={(val: string) => handleMemorizationChange("surah", val)}
-                        />
-                    </div>
+                    <SearchableSelect
+                        required
+                        placeholder="Current Surah *"
+                        name="surah"
+                        value={formData.currentMemorization.surah}
+                        options={QURAN_SURAHS.map((s) => s.name)}
+                        onChange={(val: string) =>
+                            handleMemorizationChange("currentMemorization", "surah", val)
+                        }
+                    />
 
                     <div className="grid grid-cols-3 gap-2">
                         <div>
@@ -267,65 +315,75 @@ export default function StudentOnboardingForm({ userId }: { userId: string }) {
                             <input
                                 type="number"
                                 name="aayah"
-                                value={formData.currentMemorization.aayah}
-                                onChange={(e) => handleMemorizationChange(e.target.name, e.target.value)}
+                                value={formData.currentMemorization.aayah || ""}
+                                onChange={(e) =>
+                                    handleMemorizationChange(
+                                        "currentMemorization",
+                                        "aayah",
+                                        e.target.value
+                                    )
+                                }
                                 required
                                 placeholder="e.g. 255"
                                 min={1}
-                                max={QURAN_SURAHS.find((surah) => surah.name === formData.currentMemorization.surah)?.totalAayahs}
+                                max={
+                                    QURAN_SURAHS.find(
+                                        (s) => s.name === formData.currentMemorization.surah
+                                    )?.totalAayahs
+                                }
                                 className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
                             />
                         </div>
                         <div>
                             <label className="block text-[10px] font-medium text-gray-500 mb-0.5">
-                                Juz (1-30)
+                                Juz (auto)
                             </label>
                             <input
                                 type="number"
-                                name="juz"
-                                value={formData.currentMemorization.juz}
-                                onChange={(e) => handleMemorizationChange(e.target.name, e.target.value)}
-                                placeholder="Juz"
-                                min={1}
-                                max={30}
-                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                                readOnly
+                                tabIndex={-1}
+                                value={formData.currentMemorization.juz || ""}
+                                placeholder="—"
+                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none"
                             />
                         </div>
                         <div>
                             <label className="block text-[10px] font-medium text-gray-500 mb-0.5">
-                                Page * (1-604)
+                                Page (auto)
                             </label>
                             <input
                                 type="number"
-                                name="page"
-                                value={formData.currentMemorization.page}
-                                onChange={(e) => handleMemorizationChange(e.target.name, e.target.value)}
-                                required
-                                placeholder="Page"
-                                min={1}
-                                max={604}
-                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                                readOnly
+                                tabIndex={-1}
+                                value={formData.currentMemorization.page || ""}
+                                placeholder="—"
+                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none"
                             />
                         </div>
                     </div>
+                    <p className="text-[10px] text-gray-500">
+                        {lookingUpCurrent
+                            ? "Looking up juz & page…"
+                            : "Juz & page fill in automatically from surah + aayah."}
+                    </p>
                 </div>
 
-                {/* Goal Memorization Container */}
+                {/* Goal Memorization Section */}
                 <div className="p-4 border border-emerald-900/15 rounded-xl bg-emerald-50/50 space-y-3">
                     <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
                         Memorization Goal
                     </h3>
 
-                    <div>
-                        <SearchableSelect
-                            required
-                            placeholder="Current Surah *"
-                            name="surah"
-                            value={formData.expectedMemorization.surah}
-                            options={QURAN_SURAHS.map((surah) => surah.name)}
-                            onChange={(val: string) => handleGoalChange("surah", val)}
-                        />
-                    </div>
+                    <SearchableSelect
+                        required
+                        placeholder="Target Surah *"
+                        name="surah"
+                        value={formData.expectedMemorization.surah}
+                        options={QURAN_SURAHS.map((s) => s.name)}
+                        onChange={(val: string) =>
+                            handleMemorizationChange("expectedMemorization", "surah", val)
+                        }
+                    />
 
                     <div className="grid grid-cols-3 gap-2">
                         <div>
@@ -335,52 +393,62 @@ export default function StudentOnboardingForm({ userId }: { userId: string }) {
                             <input
                                 type="number"
                                 name="aayah"
-                                value={formData.expectedMemorization.aayah}
-                                onChange={(e) => handleGoalChange(e.target.name, e.target.value)}
+                                value={formData.expectedMemorization.aayah || ""}
+                                onChange={(e) =>
+                                    handleMemorizationChange(
+                                        "expectedMemorization",
+                                        "aayah",
+                                        e.target.value
+                                    )
+                                }
                                 required
                                 placeholder="e.g. 255"
                                 min={1}
-                                max={QURAN_SURAHS.find((surah) => surah.name === formData.expectedMemorization.surah)?.totalAayahs}
+                                max={
+                                    QURAN_SURAHS.find(
+                                        (s) => s.name === formData.expectedMemorization.surah
+                                    )?.totalAayahs
+                                }
                                 className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
                             />
                         </div>
                         <div>
                             <label className="block text-[10px] font-medium text-gray-500 mb-0.5">
-                                Juz (1-30)
+                                Juz (auto)
                             </label>
                             <input
                                 type="number"
-                                name="juz"
-                                value={formData.expectedMemorization.juz}
-                                onChange={(e) => handleGoalChange(e.target.name, e.target.value)}
-                                placeholder="Juz"
-                                min={1}
-                                max={30}
-                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                                readOnly
+                                tabIndex={-1}
+                                value={formData.expectedMemorization.juz || ""}
+                                placeholder="—"
+                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none"
                             />
                         </div>
                         <div>
                             <label className="block text-[10px] font-medium text-gray-500 mb-0.5">
-                                Page * (1-604)
+                                Page (auto)
                             </label>
                             <input
                                 type="number"
-                                name="page"
-                                value={formData.expectedMemorization.page}
-                                onChange={(e) => handleGoalChange(e.target.name, e.target.value)}
-                                required
-                                placeholder="Page"
-                                min={1}
-                                max={604}
-                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-800"
+                                readOnly
+                                tabIndex={-1}
+                                value={formData.expectedMemorization.page || ""}
+                                placeholder="—"
+                                className="w-full border border-emerald-900/20 p-2 rounded-lg text-sm bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none"
                             />
                         </div>
                     </div>
+                    <p className="text-[10px] text-gray-500">
+                        {lookingUpExpected
+                            ? "Looking up juz & page…"
+                            : "Juz & page fill in automatically from surah + aayah."}
+                    </p>
                 </div>
 
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || lookingUpCurrent || lookingUpExpected}
                     className="w-full py-3 bg-emerald-900 text-white text-sm font-semibold rounded-xl hover:bg-emerald-950 transition disabled:opacity-50 cursor-pointer shadow-md shadow-emerald-950/10"
                 >
                     {loading ? "Saving Setup..." : "Complete Setup"}
